@@ -9,6 +9,7 @@ import { CardPost } from "../../../components/CardPost";
 import { CommentList } from "../../../components/CommentList";
 import { ModalComment } from "../../../components/ModalComment";
 import { Spinner } from "../../../components/Spinner";
+import { DeletePostButton } from "../../../components/DeletePostButton";
 import { postComment } from "../../../actions";
 import { logEvent } from '../../../eventLogger'
 
@@ -123,6 +124,12 @@ const PagePost = () => {
   return (
     <div>
       <CardPost post={post} highlight />
+      
+      {/* ⚠️ VULNERÁVEL: Botão de delete sem RBAC/ABAC - qualquer usuário pode deletar */}
+      <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+        <DeletePostButton postId={post.id} />
+      </div>
+
       <h3 className={styles.subtitle}>Código:</h3>
       <div className={styles.code}>
         <div dangerouslySetInnerHTML={{ __html: post.markdown }} />

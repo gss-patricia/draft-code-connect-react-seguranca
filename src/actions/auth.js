@@ -2,11 +2,13 @@
 
 import { createClient } from "../utils/supabase/server";
 import { logEvent, logEventError } from '../eventLogger'
+import { database } from "../lib/database";
 
 export async function signUp(email, password, userData = {}) {
   try {
     const supabase = await createClient();
 
+    // 1️⃣ Criar conta no Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -24,6 +26,37 @@ export async function signUp(email, password, userData = {}) {
       })
 
       return { success: false, error: error.message };
+    }
+
+    // 2️⃣ Criar usuário na tabela User automaticamente
+    if (data.user) {
+      try {
+        const username = email.split("@")[0]; // extrair username do email
+        
+        await database.createUser({
+          name: userData.name || username,
+          username: username,
+          avatar: "https://raw.githubusercontent.com/gss-patricia/code-connect-assets/main/authors/anabeatriz_dev.png",
+          role: "user", // ✅ Role padrão para novos usuários
+          bio: null,
+        });
+
+        logEvent({ 
+          step: 'AUTH', 
+          operation: 'USER_PROFILE_CREATED', 
+          userId: data.user?.id,
+          metadata: { username }
+        });
+      } catch (dbError) {
+        // Se falhar ao criar o perfil, logar mas não bloquear o registro
+        logEventError({
+          step: 'AUTH',
+          operation: 'USER_PROFILE_CREATION_FAILED',
+          userId: data.user?.id,
+          error: dbError
+        });
+        console.error("Erro ao criar perfil do usuário:", dbError);
+      }
     }
 
     logEvent({ step: 'AUTH', operation: 'REGISTER_SUCCESS', userId: data.user?.id })
