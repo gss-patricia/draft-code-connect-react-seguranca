@@ -586,6 +586,7 @@ Nosso projeto já tem a funcionalidade de Reset Password implementada. Ela funci
 **[PROBLEMA]**
 
 No fluxo atual:
+
 - O token de reset aparece inteiro na URL
 - Ele fica salvo no histórico do navegador
 - Ele aparece em DevTools → Network
@@ -648,6 +649,7 @@ Neste vídeo, vamos começar a migração para o fluxo nativo do Supabase, que j
 **[PROBLEMA]**
 
 Criar um sistema de recuperação de senha manual significa:
+
 - Gerenciar tokens
 - Gerenciar expiração
 - Armazenar hashes
@@ -661,6 +663,7 @@ Isso é difícil, demorado e arriscado. É por isso que a recomendação profiss
 **[SOLUÇÃO]**
 
 A solução é migrar totalmente para o Supabase Auth, que já implementa:
+
 - Token JWT seguro
 - Expiração automática (1h)
 - Uso único integrado (one-time use)
@@ -689,6 +692,7 @@ Nenhum código de geração/armazenamento/validação de token é necessário.
 **[TEORIA]**
 
 Esse fluxo funciona como OAuth:
+
 - Gera token
 - Valida token
 - Consome token
@@ -706,39 +710,39 @@ Esse fluxo funciona como OAuth:
 
 ```javascript
 // src/components/ForgotPassword/index.jsx (MODIFICAR)
-'use client'
-import { createClient } from '@/utils/supabase/client'
+"use client";
+import { createClient } from "@/utils/supabase/client";
 
 export const ForgotPassword = () => {
-  const supabase = createClient()
-  const [email, setEmail] = useState('')
-  
+  const supabase = createClient();
+  const [email, setEmail] = useState("");
+
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     // ✅ USAR SUPABASE AUTH NATIVO
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
-    })
-    
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
     if (error) {
-      setErrorMessage(error.message)
+      setErrorMessage(error.message);
     } else {
-      setSuccessMessage('✅ Email enviado! Verifique sua caixa de entrada.')
+      setSuccessMessage("✅ Email enviado! Verifique sua caixa de entrada.");
     }
-  }
-  
+  };
+
   return (
     <form onSubmit={handleSubmit}>
-      <Input 
+      <Input
         type="email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
       <Button type="submit">Enviar Email</Button>
     </form>
-  )
-}
+  );
+};
 ```
 
 ---
@@ -750,6 +754,7 @@ export const ForgotPassword = () => {
 **[CONTEXTO]**
 
 No vídeo anterior, nós migramos a primeira parte do fluxo — o ForgotPassword — para o Supabase. Agora vamos concluir a migração:
+
 - Implementar a página reset-password usando o fluxo automático
 - Remover toda a lógica vulnerável antiga
 - Validar que expiração e one-time use funcionam
@@ -757,6 +762,7 @@ No vídeo anterior, nós migramos a primeira parte do fluxo — o ForgotPassword
 **[PROBLEMA]**
 
 Nosso fluxo manual anterior exigia:
+
 - Pegar token da URL
 - Validar token manualmente
 - Verificar expiração
@@ -801,6 +807,7 @@ Com o uso nativo das funcionalidades do Supabase, nada disso é necessário.
 **[TEORIA]**
 
 O fluxo segue a mesma estrutura de um processo auditado OWASP:
+
 - Gera token
 - Valida assinatura
 - Valida expiração
@@ -808,6 +815,7 @@ O fluxo segue a mesma estrutura de um processo auditado OWASP:
 - Invalida automaticamente
 
 **Métrica de segurança:**
+
 - Nenhum token pode ser usado duas vezes
 - Nenhum token deve aparecer em logs ou histórico
 
@@ -825,36 +833,36 @@ O fluxo segue a mesma estrutura de um processo auditado OWASP:
 
 ```javascript
 // src/app/reset-password/page.js (MODIFICAR)
-'use client'
-import { createClient } from '@/utils/supabase/client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+"use client";
+import { createClient } from "@/utils/supabase/client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function ResetPasswordPage() {
-  const supabase = createClient()
-  const router = useRouter()
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  
+  const supabase = createClient();
+  const router = useRouter();
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    
+    e.preventDefault();
+
     if (password !== confirmPassword) {
-      setErrorMessage('As senhas não coincidem')
-      return
+      setErrorMessage("As senhas não coincidem");
+      return;
     }
-    
+
     // ✅ Supabase pega token do hash (#) automaticamente
-    const { error } = await supabase.auth.updateUser({ password })
-    
+    const { error } = await supabase.auth.updateUser({ password });
+
     if (error) {
-      setErrorMessage('Token inválido ou expirado')
+      setErrorMessage("Token inválido ou expirado");
     } else {
-      setSuccessMessage('Senha alterada com sucesso!')
-      setTimeout(() => router.push('/login'), 2000)
+      setSuccessMessage("Senha alterada com sucesso!");
+      setTimeout(() => router.push("/login"), 2000);
     }
-  }
-  
+  };
+
   return (
     <form onSubmit={handleSubmit}>
       <Input
@@ -871,7 +879,7 @@ export default function ResetPasswordPage() {
       />
       <Button type="submit">Redefinir Senha</Button>
     </form>
-  )
+  );
 }
 ```
 
@@ -888,6 +896,7 @@ Antes de implementar refresh tokens ou token rotation, precisamos entender como 
 **[PROBLEMA]**
 
 A maioria dos problemas graves de OAuth acontece porque o fluxo é implementado pela metade:
+
 - Ausência de PKCE → permite interceptação do authorization code
 - Ausência de state → permite CSRF no login
 - Redirect URI permissivo → session fixation
@@ -902,6 +911,7 @@ Apresentar o fluxo OAuth moderno em slides curtos, explicando APENAS o necessár
 **Conteúdo (13 min de slides + demonstração):**
 
 **SLIDE 1 — O que vamos revisar:**
+
 - Authorization Code Flow
 - PKCE
 - State
@@ -909,6 +919,7 @@ Apresentar o fluxo OAuth moderno em slides curtos, explicando APENAS o necessár
 - Por que isso importa para o módulo de tokens
 
 **SLIDE 2 — Onde OAuth falha na prática:**
+
 - Falta de PKCE
 - Falha em validar state
 - Redirect URI genérico
@@ -916,6 +927,7 @@ Apresentar o fluxo OAuth moderno em slides curtos, explicando APENAS o necessár
 - Fluxo implícito (tokens na URL)
 
 **SLIDE 3 — Authorization Code Flow (resumo rápido):**
+
 - App → redireciona usuário
 - Usuário autentica no provedor
 - Provedor retorna authorization code
@@ -923,6 +935,7 @@ Apresentar o fluxo OAuth moderno em slides curtos, explicando APENAS o necessár
 - "Nenhum token sensível trafega pela URL. Esse já é um diferencial desse fluxo."
 
 **SLIDE 4 — PKCE (segurança contra interceptação):**
+
 - Client gera code_verifier
 - Envia apenas o code_challenge
 - Servidor compara challenge + verifier
@@ -930,6 +943,7 @@ Apresentar o fluxo OAuth moderno em slides curtos, explicando APENAS o necessár
 - "PKCE é o que impede que alguém capture o authorization code e logue como você."
 
 **SLIDE 5 — State (proteção contra CSRF):**
+
 - Valor aleatório enviado no início do login
 - Deve voltar igual no callback
 - Se não bater → rejeitar
@@ -937,6 +951,7 @@ Apresentar o fluxo OAuth moderno em slides curtos, explicando APENAS o necessár
 - "Sem state, qualquer página pode iniciar um login OAuth em seu nome."
 
 **SLIDE 6 — O que o Supabase já faz por você:**
+
 - Usa Authorization Code Flow por padrão
 - PKCE ativado automaticamente
 - State ativado automaticamente
@@ -946,6 +961,7 @@ Apresentar o fluxo OAuth moderno em slides curtos, explicando APENAS o necessár
 - "Essa é a razão pela qual a autenticação do Supabase é segura mesmo sem escrever uma linha de código."
 
 **SLIDE 7 — O que ainda é sua responsabilidade:**
+
 - Armazenamento seguro dos tokens
 - Ciclo de vida do refresh token
 - Token rotation
@@ -984,6 +1000,7 @@ Se um refresh token vazar, o invasor gera tokens ilimitados. Sem token rotation,
 A solução profissional é usar duas proteções combinadas:
 
 1. **Token Rotation:** A cada uso do refresh token, o servidor gera um novo e invalida o anterior
+
    - Refresh token vira single-use
    - Se alguém tentar usar o antigo, é sinal de vazamento
 
@@ -1022,6 +1039,7 @@ A solução profissional é usar duas proteções combinadas:
 **[TEORIA]**
 
 **Defesa em profundidade:**
+
 - Cada refresh token = descartável
 - Tentar reaproveitar = evidência de ataque
 - Resposta automática = segurança real
@@ -1067,23 +1085,26 @@ export async function updateSession(request) {
   let supabaseResponse = NextResponse.next({ request });
   const supabase = createServerClient(/*...*/);
 
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
 
   // ✅ Adicionar log quando refresh token expira
-  if (error?.code === 'refresh_token_not_found') {
+  if (error?.code === "refresh_token_not_found") {
     logSecurityEvent({
-      type: 'REFRESH_TOKEN_EXPIRED',
+      type: "REFRESH_TOKEN_EXPIRED",
       userId: user?.id,
-      severity: 'WARNING'
+      severity: "WARNING",
     });
   }
 
   // ✅ Log de token rotation (quando tokens são atualizados)
   if (user) {
     logEvent({
-      step: 'AUTH',
-      operation: 'TOKEN_REFRESH',
-      userId: user.id
+      step: "AUTH",
+      operation: "TOKEN_REFRESH",
+      userId: user.id,
     });
   }
 
@@ -1093,25 +1114,94 @@ export async function updateSession(request) {
 
 ---
 
-### **MÓDULO 3: Autorização - RBAC e ABAC (52 min)**
+### **MÓDULO 3: Autorização - RBAC e ABAC (52 min, 4 vídeos)**
 
 #### 🎥 Vídeo 3.1: Introdução à Autorização (10 min)
 
 **Commit:** `video-3.1-intro-autorizacao`
 
-- Autenticação vs Autorização
-- RBAC (Role-Based Access Control)
-- ABAC (Attribute-Based Access Control)
-- **Por que usar RBAC + ABAC juntos?**
-- Casos de uso práticos
+**[CONTEXTO]**
 
-**Modificações de Código:** ❌ Nenhuma
+Até agora, protegemos nossa aplicação contra XSS, CSRF e vazamento de tokens. Mas existe um problema grave ainda não resolvido: **qualquer usuário logado pode deletar qualquer post**. Não há verificação de permissões, apenas autenticação. Este módulo ensina como implementar controle de acesso adequado usando RBAC e ABAC.
 
-**O que será ensinado:**
+**[PROBLEMA]**
 
-- Conceitos fundamentais
-- Quando usar cada abordagem
-- Como combiná-las na prática
+A maioria das aplicações falha em autorização porque:
+
+- Confunde **autenticação** (quem você é) com **autorização** (o que você pode fazer)
+- Implementa apenas RBAC simples (roles fixas)
+- Não considera atributos contextuais (ownership, tempo, localização)
+- Mistura lógica de autorização com lógica de negócio
+- Não tem hierarquia clara de permissões
+
+**Exemplo real:** Um usuário comum consegue deletar posts de outros usuários porque só checamos se ele está logado, não se ele tem permissão.
+
+**[SOLUÇÃO]**
+
+Implementar uma estratégia híbrida: **RBAC + ABAC**
+
+- **RBAC:** Para permissões baseadas em papéis (admin, moderador, usuário)
+- **ABAC:** Para permissões baseadas em atributos (ownership, reportCount)
+- **Hierarquia:** Admin > Moderador > Owner > Outros
+
+**Conteúdo (10 min de slides + exemplos):**
+
+**SLIDE 1 — Autenticação vs Autorização:**
+
+- **Autenticação:** "Quem você é?" (login/senha, OAuth, biometria)
+- **Autorização:** "O que você pode fazer?" (permissões, roles, policies)
+- **Erro comum:** Checar apenas `if (user)` → Isso é autenticação, não autorização!
+
+**SLIDE 2 — RBAC (Role-Based Access Control):**
+
+- Baseado em **papéis/roles** (admin, moderador, usuário)
+- Simples de implementar
+- **Exemplo:** "Apenas admin pode deletar qualquer post"
+- **Limitação:** Não considera contexto (ownership, atributos)
+
+**SLIDE 3 — ABAC (Attribute-Based Access Control):**
+
+- Baseado em **atributos** (authorId, reportCount, createdAt)
+- Mais flexível e granular
+- **Exemplo:** "Autor pode deletar seu próprio post"
+- **Exemplo 2:** "Moderador pode deletar posts com 3+ reports"
+
+**SLIDE 4 — Por que usar RBAC + ABAC juntos?**
+
+- RBAC sozinho: Rígido demais, cria muitos roles
+- ABAC sozinho: Complexo demais para casos simples
+- **Híbrido:** Simplicidade + Flexibilidade
+
+**SLIDE 5 — Hierarquia de Permissões (exemplo prático):**
+
+```
+Deletar Post:
+├─ Admin: Pode deletar TUDO (RBAC)
+├─ Moderador: Pode deletar se reportCount >= 3 (RBAC + ABAC)
+├─ Autor: Pode deletar próprio post (ABAC - ownership)
+└─ Outros: Não pode deletar (DENY)
+```
+
+**SLIDE 6 — O que vamos implementar:**
+
+- Vídeo 3.2: RBAC básico (apenas admin)
+- Vídeo 3.3: ABAC ownership (autor pode deletar próprio post)
+- Vídeo 3.4: ABAC avançado (moderador + reportCount)
+
+**[TEORIA]**
+
+**OWASP Top 10: Broken Access Control** (#1 em 2021)
+
+- 94% das aplicações testadas tinham alguma forma de broken access control
+- **Métrica:** "Nenhuma ação sensível pode ser executada sem verificação de permissão"
+
+**Defesa em profundidade:**
+
+- Verificar permissões no backend (NUNCA confiar no frontend)
+- Logar tentativas de acesso negado
+- Separar lógica de autorização da lógica de negócio
+
+**Modificações de Código:** ❌ Nenhuma (apenas teoria com slides)
 
 ---
 
@@ -1119,38 +1209,138 @@ export async function updateSession(request) {
 
 **Commit:** `video-3.2-rbac-basico`
 
-- Adicionar coluna `role` ao banco de dados
-- Implementar verificação de role simples (apenas admin)
-- Testar proteção
+**[CONTEXTO]**
 
-**Modificações de Código:** ✅ Sim
+No vídeo anterior, aprendemos a teoria de RBAC e ABAC. Agora vamos implementar a proteção mais básica: **RBAC puro**. Vamos adicionar uma coluna `role` no banco de dados e verificar se o usuário é admin antes de permitir a deleção de posts. Este é o primeiro passo para construir um sistema de autorização robusto.
 
-**Arquivos criados:**
+**[PROBLEMA]**
 
-- `supabase/migrations/002_add_role.sql`
-
-**Arquivos modificados:**
-
-- `src/actions/posts.js` - adicionar verificação RBAC
-
-```sql
--- 002_add_role.sql
-ALTER TABLE "User" ADD COLUMN role TEXT DEFAULT 'user';
-ALTER TABLE "Post" ADD COLUMN reportCount INTEGER DEFAULT 0;
-
--- Criar alguns usuários admin para teste
-UPDATE "User" SET role = 'admin' WHERE username IN ('seu_usuario');
-```
+Atualmente, o código em `src/actions/posts.js` tem a seguinte vulnerabilidade:
 
 ```javascript
-// src/actions/posts.js (MODIFICAR)
+// ⚠️ VULNERÁVEL: Qualquer usuário logado pode deletar qualquer post
 export async function deletePost(postId) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    throw new Error("Não autenticado");
+  }
+
+  // ❌ Não verifica se o usuário tem permissão!
+  await db.from("Post").delete().eq("id", postId);
+  revalidatePath("/");
+  return { success: true };
+}
+```
+
+**O que está errado:**
+
+- Apenas verifica **autenticação** (se está logado)
+- Não verifica **autorização** (se tem permissão)
+- Qualquer usuário pode deletar posts de outros usuários
+
+**[SOLUÇÃO]**
+
+Implementar RBAC básico em 3 etapas:
+
+1. **Adicionar coluna `role` no banco** (migration)
+2. **Verificar role antes de deletar** (autorização)
+3. **Testar com usuários admin e não-admin**
+
+**Conteúdo:**
+
+1. **Criar migration (3 min)**
+
+   - Criar `supabase/migrations/002_add_role.sql`
+   - Adicionar coluna `role` com default 'user'
+   - Adicionar coluna `reportCount` (preparar para ABAC)
+   - Promover usuário de teste para admin
+
+2. **Implementar verificação RBAC (5 min)**
+
+   - Modificar `src/actions/posts.js`
+   - Buscar role do usuário no banco
+   - Verificar se `role === 'admin'`
+   - Lançar erro se não for admin
+
+3. **Testar ao vivo (4 min)**
+
+   - Login como usuário comum → tentar deletar → NEGADO ✅
+   - Login como admin → deletar post → SUCESSO ✅
+   - Verificar logs de erro
+
+**[TEORIA]**
+
+**RBAC (Role-Based Access Control):**
+
+- Cada usuário tem um **papel** (role)
+- Cada ação verifica o papel necessário
+- Simples, mas inflexível (não considera ownership)
+
+**Trade-offs:**
+
+- ✅ **Vantagem:** Simples de implementar e entender
+- ❌ **Limitação:** Não permite que autor delete próprio post (vamos resolver no próximo vídeo)
+
+**Métrica de segurança:**
+
+- "Apenas usuários com role 'admin' podem executar ações privilegiadas"
+
+**Modificações de Código:** ✅ Sim
+
+**Arquivos criados:**
+
+- `supabase/migrations/002_add_role.sql` - Adicionar roles
+
+**Arquivos modificados:**
+
+- `src/actions/posts.js` - Adicionar verificação RBAC
+
+**Código a implementar:**
+
+```sql
+-- supabase/migrations/002_add_role.sql (CRIAR)
+-- Adicionar coluna role com default 'user'
+ALTER TABLE "User" ADD COLUMN role TEXT DEFAULT 'user';
+
+-- Adicionar coluna reportCount (preparar para ABAC no vídeo 3.4)
+ALTER TABLE "Post" ADD COLUMN reportCount INTEGER DEFAULT 0;
+
+-- Promover usuário de teste para admin (ajustar o username)
+UPDATE "User" SET role = 'admin' WHERE username = 'seu_usuario_aqui';
+
+-- Criar índice para performance
+CREATE INDEX idx_user_role ON "User"(role);
+```
+
+```javascript
+// src/actions/posts.js (MODIFICAR)
+"use server";
+
+import { createClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
+import * as database from "@/lib/database";
+
+export async function deletePost(postId) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Não autenticado");
+  }
+
+  // Buscar dados do post
   const post = await database.getPostById(postId);
+  if (!post) {
+    throw new Error("Post não encontrado");
+  }
+
+  // Buscar dados do usuário (incluindo role)
   const dbUser = await database.getUserByUsername(user.email.split("@")[0]);
 
   // ✅ RBAC: Apenas admin pode deletar
@@ -1158,17 +1348,24 @@ export async function deletePost(postId) {
     throw new Error("Apenas administradores podem deletar posts");
   }
 
+  // Deletar post
+  const db = await createClient();
   await db.from("Post").delete().eq("id", postId);
+
   revalidatePath("/");
   return { success: true };
 }
 ```
 
-**O que será ensinado:**
+**Teste manual (demonstração ao vivo):**
 
-- Migration simples
-- Verificação básica de role
-- Conceito de RBAC puro
+```javascript
+// 1. Login como usuário comum (role: 'user')
+// 2. Tentar deletar post → Erro: "Apenas administradores podem deletar posts" ✅
+
+// 3. Login como admin (role: 'admin')
+// 4. Deletar post → Sucesso ✅
+```
 
 ---
 
@@ -1176,50 +1373,174 @@ export async function deletePost(postId) {
 
 **Commit:** `video-3.3-abac-ownership`
 
-- Adicionar verificação de autoria (ownership)
-- Combinar RBAC + ABAC
-- Hierarquia de permissões
+**[CONTEXTO]**
+
+No vídeo anterior, implementamos RBAC básico: apenas admins podem deletar posts. Mas existe um problema: **autores não podem deletar seus próprios posts!** Isso não faz sentido do ponto de vista de UX. Neste vídeo, vamos adicionar **ABAC (Attribute-Based Access Control)** para permitir que autores deletem posts que criaram, introduzindo o conceito de **ownership**.
+
+**[PROBLEMA]**
+
+O código atual tem uma limitação crítica:
+
+```javascript
+// ❌ PROBLEMA: Autor não pode deletar próprio post
+if (dbUser.role !== "admin") {
+  throw new Error("Apenas administradores podem deletar posts");
+}
+```
+
+**Cenário real:**
+
+- Usuário comum cria um post
+- Percebe que tem um erro de digitação
+- Tenta deletar para corrigir
+- **❌ NEGADO:** "Apenas administradores podem deletar posts"
+
+Isso viola o princípio de UX: **"Usuários devem ter controle sobre conteúdo que criaram"**
+
+**[SOLUÇÃO]**
+
+Implementar **ABAC com ownership** e criar **hierarquia de permissões**:
+
+1. **Admin pode deletar TUDO** (RBAC)
+2. **Autor pode deletar PRÓPRIO post** (ABAC - ownership)
+3. **Outros não podem deletar** (DENY)
+
+**Conteúdo:**
+
+1. **Explicar ownership (3 min)**
+
+   - O que é ownership: `post.authorId === user.id`
+   - Por que ownership é ABAC (baseado em atributo)
+   - Diferença entre role (RBAC) e ownership (ABAC)
+
+2. **Implementar hierarquia (7 min)**
+
+   - Modificar `src/actions/posts.js`
+   - Adicionar verificação de ownership
+   - Criar hierarquia: Admin → Owner → Outros
+   - Evitar duplicação de código (early return para admin)
+
+3. **Testar 3 cenários (5 min)**
+
+   - **Cenário 1:** Admin deleta post de outro usuário → SUCESSO ✅
+   - **Cenário 2:** Autor deleta próprio post → SUCESSO ✅
+   - **Cenário 3:** Usuário comum tenta deletar post de outro → NEGADO ✅
+
+**[TEORIA]**
+
+**ABAC (Attribute-Based Access Control):**
+
+- Baseado em **atributos** do recurso (post.authorId)
+- Comparado com **atributos** do usuário (user.id)
+- Permite controle granular baseado em contexto
+
+**Hierarquia de Permissões:**
+
+```
+deletar_post:
+  IF role == 'admin' → ALLOW (RBAC)
+  ELSE IF authorId == userId → ALLOW (ABAC ownership)
+  ELSE → DENY
+```
+
+**Trade-offs:**
+
+- ✅ **Vantagem:** Flexível, respeita ownership
+- ✅ **Vantagem:** Melhor UX (autor controla próprio conteúdo)
+- ⚠️ **Atenção:** Verificar ownership para TODAS as ações sensíveis
+
+**Métrica de segurança:**
+
+- "Apenas o autor ou admin podem modificar/deletar um recurso"
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos modificados:**
 
-- `src/actions/posts.js` - adicionar ABAC
+- `src/actions/posts.js` - Adicionar ABAC ownership
+
+**Código a implementar:**
 
 ```javascript
 // src/actions/posts.js (EVOLUIR)
+"use server";
+
+import { createClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
+import * as database from "@/lib/database";
+
 export async function deletePost(postId) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    throw new Error("Não autenticado");
+  }
+
+  // Buscar dados do post
   const post = await database.getPostById(postId);
+  if (!post) {
+    throw new Error("Post não encontrado");
+  }
+
+  // Buscar dados do usuário (incluindo role)
   const dbUser = await database.getUserByUsername(user.email.split("@")[0]);
 
-  // ✅ RBAC: Admin pode deletar tudo
+  // ✅ RBAC: Admin pode deletar TUDO (early return)
   if (dbUser.role === "admin") {
+    const db = await createClient();
     await db.from("Post").delete().eq("id", postId);
     revalidatePath("/");
     return { success: true };
   }
 
-  // ✅ ABAC: Autor pode deletar próprio post (ownership)
+  // ✅ ABAC: Autor pode deletar PRÓPRIO post (ownership)
   if (post.authorId === dbUser.id) {
+    const db = await createClient();
     await db.from("Post").delete().eq("id", postId);
     revalidatePath("/");
     return { success: true };
   }
 
+  // ❌ DENY: Nenhuma condição foi atendida
   throw new Error("Sem permissão para deletar este post");
 }
 ```
 
-**O que será ensinado:**
+**Teste manual (demonstração ao vivo):**
 
-- Atributo de ownership (authorId)
-- Como RBAC e ABAC trabalham juntos
-- Hierarquia: Admin > Owner > Others
+```javascript
+// CENÁRIO 1: Admin deleta post de outro usuário
+// 1. Login como admin
+// 2. Tentar deletar post de outro usuário → SUCESSO ✅
+
+// CENÁRIO 2: Autor deleta próprio post
+// 1. Login como usuário comum (autor do post)
+// 2. Tentar deletar próprio post → SUCESSO ✅
+
+// CENÁRIO 3: Usuário tenta deletar post de outro
+// 1. Login como usuário comum
+// 2. Tentar deletar post de outro usuário → NEGADO ✅
+// Erro: "Sem permissão para deletar este post"
+```
+
+**Explicação verbal (importante):**
+
+```
+Hierarquia de Permissões:
+┌─────────────────────────────────────────┐
+│ 1. ADMIN (role === 'admin')             │ → RBAC
+│    └─ Pode deletar TUDO                 │
+├─────────────────────────────────────────┤
+│ 2. OWNER (authorId === userId)          │ → ABAC
+│    └─ Pode deletar PRÓPRIO post         │
+├─────────────────────────────────────────┤
+│ 3. OUTROS                                │ → DENY
+│    └─ Não pode deletar                  │
+└─────────────────────────────────────────┘
+```
 
 ---
 
@@ -1227,45 +1548,164 @@ export async function deletePost(postId) {
 
 **Commit:** `video-3.4-abac-avancado`
 
-- Adicionar role de moderador
-- Regra: Moderador pode deletar posts com 3+ reports
-- Refatorar para função de autorização reutilizável
+**[CONTEXTO]**
+
+Até agora temos RBAC (admin) + ABAC simples (ownership). Mas e se quisermos criar um papel intermediário, como **moderador**, que pode deletar apenas posts problemáticos (com 3+ denúncias)? Isso requer **ABAC avançado com múltiplos atributos**: combinar `role` + `reportCount`. Além disso, vamos refatorar o código para criar uma **função reutilizável de autorização**, seguindo o padrão de separação de responsabilidades.
+
+**[PROBLEMA]**
+
+O código atual está crescendo e misturando lógicas:
+
+```javascript
+// ❌ PROBLEMA: Lógica de autorização misturada com lógica de negócio
+export async function deletePost(postId) {
+  // ... buscar dados ...
+  
+  // Múltiplas verificações inline
+  if (dbUser.role === "admin") { /* deletar */ }
+  if (post.authorId === dbUser.id) { /* deletar */ }
+  
+  // Como adicionar moderador aqui?
+  // Como reutilizar essa lógica em outras ações (edit, publish, etc)?
+}
+```
+
+**Problemas:**
+- Difícil adicionar novos roles ou regras
+- Impossível reutilizar lógica em outras funções
+- Sem logs de autorização falha
+- Difícil testar permissões isoladamente
+
+**[SOLUÇÃO]**
+
+1. **Criar função `canDeletePost()`** em `src/lib/authorization.js`
+2. **Adicionar role "moderator"** com regra ABAC: `reportCount >= 3`
+3. **Refatorar `deletePost()`** para usar a função
+4. **Adicionar logs de segurança** (tentativas negadas)
+
+**Conteúdo:**
+
+1. **Criar função de autorização (5 min)**
+
+   - Criar `src/lib/authorization.js`
+   - Implementar `canDeletePost(user, post)`
+   - Incluir todas as regras: Admin, Owner, Moderador
+   - Retornar `true/false` (sem lançar erro)
+
+2. **Adicionar role moderador (3 min)**
+
+   - Atualizar migration para criar moderadores
+   - Explicar regra: `role === 'moderator' AND reportCount >= 3`
+   - Isso é RBAC + ABAC combinado
+
+3. **Refatorar deletePost (4 min)**
+
+   - Usar `canDeletePost()` em `src/actions/posts.js`
+   - Adicionar log de falha de autorização
+   - Adicionar log de sucesso
+
+4. **Testar 4 cenários (3 min)**
+
+   - Admin deleta qualquer post → SUCESSO ✅
+   - Autor deleta próprio post → SUCESSO ✅
+   - Moderador deleta post com 3+ reports → SUCESSO ✅
+   - Moderador tenta deletar post com 2 reports → NEGADO ✅
+
+**[TEORIA]**
+
+**ABAC com múltiplos atributos:**
+```
+IF role == 'moderator' AND reportCount >= 3 → ALLOW
+```
+
+Aqui usamos **dois atributos**:
+- `role` (do usuário)
+- `reportCount` (do post)
+
+Isso é mais poderoso que RBAC puro porque considera **contexto do recurso**.
+
+**Separação de responsabilidades:**
+- `authorization.js` → Decide "PODE ou NÃO PODE"
+- `posts.js` → Executa ação SE autorizado
+- Benefícios: Testável, reutilizável, manutenível
+
+**Hierarquia final:**
+```
+deletar_post:
+  IF role == 'admin' → ALLOW (RBAC)
+  ELSE IF authorId == userId → ALLOW (ABAC ownership)
+  ELSE IF role == 'moderator' AND reportCount >= 3 → ALLOW (RBAC + ABAC)
+  ELSE → DENY
+```
+
+**Métrica de segurança:**
+- "Toda tentativa de autorização negada deve ser logada"
+- "Lógica de autorização deve ser isolada e testável"
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `src/lib/authorization.js`
+- `src/lib/authorization.js` - Funções de autorização reutilizáveis
 
 **Arquivos modificados:**
 
-- `src/actions/posts.js` - refatorar com função
+- `src/actions/posts.js` - Refatorar com função + logs
+- `supabase/migrations/002_add_role.sql` - Adicionar moderadores (UPDATE)
+
+**Código a implementar:**
 
 ```javascript
 // src/lib/authorization.js (CRIAR)
-export async function canDeletePost(user, post) {
-  // RBAC: Admin pode tudo
+/**
+ * Verifica se um usuário pode deletar um post
+ * @param {Object} user - Usuário com role e id
+ * @param {Object} post - Post com authorId e reportCount
+ * @returns {boolean} - true se autorizado, false caso contrário
+ */
+export function canDeletePost(user, post) {
+  // RBAC: Admin pode deletar TUDO
   if (user.role === "admin") {
     return true;
   }
 
-  // ABAC: Ownership
+  // ABAC: Ownership - Autor pode deletar próprio post
   if (post.authorId === user.id) {
     return true;
   }
 
-  // RBAC + ABAC: Moderador + Atributo (reports)
+  // RBAC + ABAC: Moderador pode deletar posts com 3+ denúncias
   if (user.role === "moderator" && post.reportCount >= 3) {
     return true;
   }
 
+  // DENY: Nenhuma condição foi atendida
   return false;
+}
+
+/**
+ * Retorna uma mensagem de erro específica baseada no contexto
+ */
+export function getAuthorizationError(user, post, action) {
+  if (action === "delete") {
+    if (user.role === "moderator") {
+      return `Moderadores só podem deletar posts com 3+ denúncias (este tem ${post.reportCount})`;
+    }
+    return "Você não tem permissão para deletar este post";
+  }
+  return "Ação não autorizada";
 }
 ```
 
 ```javascript
 // src/actions/posts.js (REFATORAR)
-import { canDeletePost } from "@/lib/authorization";
+"use server";
+
+import { createClient } from "@/utils/supabase/server";
+import { revalidatePath } from "next/cache";
+import * as database from "@/lib/database";
+import { canDeletePost, getAuthorizationError } from "@/lib/authorization";
+import { logEvent, logSecurityEvent } from "@/eventLogger";
 
 export async function deletePost(postId) {
   const supabase = await createClient();
@@ -1273,43 +1713,129 @@ export async function deletePost(postId) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    throw new Error("Não autenticado");
+  }
+
+  // Buscar dados do post
   const post = await database.getPostById(postId);
+  if (!post) {
+    throw new Error("Post não encontrado");
+  }
+
+  // Buscar dados do usuário (incluindo role)
   const dbUser = await database.getUserByUsername(user.email.split("@")[0]);
 
-  // ✅ Usar função de autorização
-  const canDelete = await canDeletePost(dbUser, post);
+  // ✅ Usar função de autorização isolada
+  const canDelete = canDeletePost(dbUser, post);
 
   if (!canDelete) {
+    // ✅ Logar falha de autorização
     logSecurityEvent({
       type: "AUTHORIZATION_FAILED",
       userId: dbUser.id,
       resource: "post",
+      resourceId: postId,
       action: "delete",
       reason: "insufficient_permissions",
+      metadata: {
+        userRole: dbUser.role,
+        postAuthorId: post.authorId,
+        reportCount: post.reportCount,
+      },
     });
-    throw new Error("Sem permissão para deletar este post");
+
+    // Retornar mensagem de erro específica
+    throw new Error(getAuthorizationError(dbUser, post, "delete"));
   }
 
+  // Deletar post
+  const db = await createClient();
   await db.from("Post").delete().eq("id", postId);
   revalidatePath("/");
 
+  // ✅ Logar sucesso da operação
   logEvent({
     step: "AUTHORIZATION",
     operation: "POST_DELETED",
     userId: dbUser.id,
-    metadata: { postId, userRole: dbUser.role },
+    metadata: {
+      postId,
+      userRole: dbUser.role,
+      reason: dbUser.role === "admin"
+        ? "admin_privileges"
+        : post.authorId === dbUser.id
+        ? "ownership"
+        : "moderator_report_threshold",
+    },
   });
 
   return { success: true };
 }
 ```
 
-**O que será ensinado:**
+```sql
+-- supabase/migrations/002_add_role.sql (ATUALIZAR)
+-- Adicionar alguns moderadores para teste
+UPDATE "User" SET role = 'moderator' 
+WHERE username IN ('moderador1', 'moderador2');
 
-- ABAC com múltiplos atributos (role + reportCount)
-- Função reutilizável de autorização
-- Logs de segurança
-- Padrão: extrair lógica de autorização
+-- Adicionar alguns posts com reports para teste
+UPDATE "Post" SET reportCount = 5 
+WHERE id IN (1, 2);
+
+UPDATE "Post" SET reportCount = 2 
+WHERE id IN (3, 4);
+```
+
+**Teste manual (demonstração ao vivo):**
+
+```javascript
+// CENÁRIO 1: Admin deleta qualquer post
+// → SUCESSO ✅
+
+// CENÁRIO 2: Autor deleta próprio post
+// → SUCESSO ✅
+
+// CENÁRIO 3: Moderador deleta post com 5 reports
+// → SUCESSO ✅
+// Log: reason = "moderator_report_threshold"
+
+// CENÁRIO 4: Moderador tenta deletar post com 2 reports
+// → NEGADO ✅
+// Erro: "Moderadores só podem deletar posts com 3+ denúncias (este tem 2)"
+// Log: type = "AUTHORIZATION_FAILED"
+
+// CENÁRIO 5: Usuário comum tenta deletar post de outro
+// → NEGADO ✅
+// Erro: "Você não tem permissão para deletar este post"
+```
+
+**Explicação verbal (importante):**
+
+```
+Hierarquia Final:
+┌──────────────────────────────────────────────┐
+│ 1. ADMIN (role === 'admin')                  │ → RBAC puro
+│    └─ Pode deletar TUDO                      │
+├──────────────────────────────────────────────┤
+│ 2. OWNER (authorId === userId)               │ → ABAC ownership
+│    └─ Pode deletar PRÓPRIO post              │
+├──────────────────────────────────────────────┤
+│ 3. MODERATOR (role + reportCount >= 3)       │ → RBAC + ABAC
+│    └─ Pode deletar posts denunciados         │
+├──────────────────────────────────────────────┤
+│ 4. OUTROS                                     │ → DENY
+│    └─ Não pode deletar                       │
+└──────────────────────────────────────────────┘
+
+Benefícios da refatoração:
+✅ Lógica isolada em authorization.js
+✅ Reutilizável em outras actions
+✅ Testável isoladamente
+✅ Logs completos de segurança
+✅ Mensagens de erro específicas
+```
 
 ---
 
