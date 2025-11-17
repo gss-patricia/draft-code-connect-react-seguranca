@@ -1850,7 +1850,7 @@ Benefícios da refatoração:
 
 ---
 
-### **MÓDULO 4: CORS e Configurações Seguras (49 min, 4 vídeos)**
+### **MÓDULO 4: CORS e Configurações Seguras (37 min, 3 vídeos)**
 
 #### 🎥 Vídeo 4.1: Entendendo CORS e Same-Origin Policy (12 min)
 
@@ -2298,13 +2298,13 @@ Fluxo CORS com nosso middleware:
 
 ---
 
-#### 🎥 Vídeo 4.3: Content Security Policy (CSP) (12 min)
+#### 🎥 Vídeo 4.3: CSP e Security Headers (13 min)
 
-**Commit:** `video-4.3-csp`
+**Commit:** `video-4.3-csp-e-headers`
 
 **[CONTEXTO]**
 
-Mesmo com sanitização de HTML (DOMPurify), nossa aplicação ainda está vulnerável se um atacante conseguir injetar um `<script>` tag. **Content Security Policy (CSP)** é uma **segunda camada de defesa** contra XSS: mesmo que um script malicioso chegue ao HTML, o navegador bloqueará sua execução se não atender às regras do CSP. Vamos implementar CSP com **nonce** para permitir apenas scripts autorizados.
+Mesmo com sanitização de HTML (DOMPurify), nossa aplicação ainda está vulnerável se um atacante conseguir injetar um `<script>` tag. **Content Security Policy (CSP)** é uma **segunda camada de defesa** contra XSS: mesmo que um script malicioso chegue ao HTML, o navegador bloqueará sua execução se não atender às regras do CSP. Além do CSP, vamos adicionar **outros security headers essenciais** (HSTS, X-Frame-Options, etc) para proteção completa.
 
 **[PROBLEMA]**
 
@@ -2342,25 +2342,25 @@ Implementar **CSP com nonce** em 3 etapas:
    - Diretivas principais: `script-src`, `style-src`, `img-src`, etc
    - Defesa em profundidade: XSS sanitization + CSP
 
-2. **Implementar função geradora de CSP (4 min)**
+2. **Implementar CSP com nonce (4 min)**
 
    - Criar `src/lib/csp.js`
    - Função `generateNonce()` com crypto
    - Função `getCSPHeader(nonce)` com todas as diretivas
    - Explicar cada diretiva
 
-3. **Adicionar CSP no middleware (3 min)**
+3. **Adicionar todos security headers no middleware (4 min)**
 
    - Modificar `src/middleware.js`
-   - Gerar nonce por request
-   - Adicionar header `Content-Security-Policy`
-   - Passar nonce para layout (via headers)
+   - Adicionar CSP com nonce
+   - Adicionar HSTS, X-Frame-Options, X-Content-Type-Options
+   - Adicionar Referrer-Policy, Permissions-Policy
 
-4. **Testar CSP (2 min)**
+4. **Testar (2 min)**
 
-   - Ver scripts legítimos funcionando (com nonce)
-   - Tentar injetar script sem nonce → BLOQUEADO ✅
-   - Ver violação no console
+   - Script sem nonce → BLOQUEADO ✅
+   - Ver violação CSP no console
+   - Verificar todos headers no DevTools
 
 **[TEORIA]**
 
@@ -2387,10 +2387,19 @@ connect-src 'self' *.supabase.co → Fetch/XHR: mesma origem + Supabase
 frame-ancestors 'none'       → Não pode ser iframe (anti-clickjacking)
 ```
 
+**Security Headers Adicionais:**
+
+- **HSTS:** Force HTTPS por 1 ano (previne downgrade attacks)
+- **X-Frame-Options:** DENY (anti-clickjacking)
+- **X-Content-Type-Options:** nosniff (previne MIME sniffing)
+- **Referrer-Policy:** Controla info vazada em header Referer
+- **Permissions-Policy:** Desabilita camera/micro/geo
+
 **Métrica de segurança:**
 
 - "Scripts inline só executam com nonce válido"
 - "Violações CSP são logadas para monitoramento"
+- "Todos headers OWASP essenciais implementados"
 
 **Modificações de Código:** ✅ Sim
 
@@ -2401,7 +2410,7 @@ frame-ancestors 'none'       → Não pode ser iframe (anti-clickjacking)
 
 **Arquivos modificados:**
 
-- `src/middleware.js` - Adicionar CSP header com nonce
+- `src/middleware.js` - Adicionar CSP + todos security headers
 
 **Código a implementar:**
 
@@ -2504,7 +2513,7 @@ export async function POST(request) {
 ```
 
 ```javascript
-// src/middleware.js (ADICIONAR CSP)
+// src/middleware.js (ADICIONAR CSP + SECURITY HEADERS)
 import { NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
 import { getCorsHeaders, createPreflightResponse } from "@/lib/cors";
@@ -2532,175 +2541,11 @@ export async function middleware(request) {
     }
   });
 
-  // 5. ✅ Adicionar CSP header
-  response.headers.set("Content-Security-Policy", getCSPHeader(nonce));
-
-  // 6. ✅ Adicionar nonce ao header customizado (para layout usar)
-  response.headers.set("x-nonce", nonce);
-
-  return response;
-}
-
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-};
-```
-
-**Teste manual (demonstração ao vivo):**
-
-```javascript
-// 1. Ver CSP no DevTools
-// DevTools → Network → Headers → Response Headers
-// Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-abc123'; ...
-
-// 2. Tentar injetar script sem nonce (simular XSS)
-// Adicionar no HTML: <script>alert('XSS')</script>
-// Console: "Refused to execute inline script because it violates CSP directive"
-// ✅ BLOQUEADO pelo navegador!
-
-// 3. Script com nonce funciona
-// <script nonce="abc123">console.log('OK')</script>
-// → Executa normalmente ✅
-
-// 4. Ver violação reportada
-// Logs: [CSP_VIOLATION] blocked-uri: "inline", violated-directive: "script-src"
-```
-
-**Explicação verbal (importante):**
-
-```
-Como CSP protege contra XSS:
-
-1. Atacante injeta: <script>alert('XSS')</script>
-
-2. HTML chega ao navegador
-
-3. Navegador verifica CSP:
-   ├─ Diretiva: script-src 'self' 'nonce-abc123'
-   ├─ Script injetado: sem nonce
-   └─ DECISÃO: BLOQUEAR ❌
-
-4. Console: "Refused to execute... violates CSP"
-
-5. Aplicação continua funcionando ✅
-   └─ Scripts legítimos têm nonce correto
-
-Defesa em profundidade:
-├─ Camada 1: Sanitização (DOMPurify) → Remove scripts
-├─ Camada 2: CSP → Bloqueia se bypass de sanitização
-└─ Se ambas falharem: Logs de violação CSP
-```
-
----
-
-#### 🎥 Vídeo 4.4: Security Headers Avançados (12 min)
-
-**Commit:** `video-4.4-headers-avancados`
-
-**[CONTEXTO]**
-
-Além de CORS e CSP, existem outros **security headers** que protegem contra ataques específicos: **HSTS** (force HTTPS), **Permissions Policy** (controlar features do navegador), **X-Frame-Options** (anti-clickjacking), entre outros. Este vídeo implementa todos os headers recomendados por **securityheaders.com** e **OWASP**.
-
-**[PROBLEMA]**
-
-Aplicações sem security headers são vulneráveis a:
-
-```javascript
-// ❌ Sem HSTS: Man-in-the-middle pode downgrade HTTPS → HTTP
-// ❌ Sem X-Frame-Options: Aplicação pode ser iframe (clickjacking)
-// ❌ Sem X-Content-Type-Options: MIME-type sniffing vulnerabilities
-// ❌ Sem Referrer-Policy: Vaza informações sensíveis em URLs
-// ❌ Sem Permissions-Policy: Pode usar câmera/microfone sem permissão
-```
-
-**[SOLUÇÃO]**
-
-Adicionar **todos os security headers** recomendados no middleware.
-
-**Conteúdo:**
-
-1. **Explicar cada header (5 min)**
-
-   - HSTS: Force HTTPS por 1 ano
-   - X-Frame-Options: Prevenir clickjacking
-   - X-Content-Type-Options: Prevenir MIME sniffing
-   - Referrer-Policy: Controlar info em Referer
-   - Permissions-Policy: Controlar features do navegador
-
-2. **Implementar no middleware (4 min)**
-
-   - Adicionar todos os headers
-   - Diferentes configs para dev vs prod
-   - Comentários explicando cada um
-
-3. **Testar com securityheaders.com (3 min)**
-
-   - Fazer deploy
-   - Testar em securityheaders.com
-   - Ver score A+ ✅
-
-**[TEORIA]**
-
-**HSTS (HTTP Strict Transport Security):**
-
-- Force navegador usar HTTPS por período definido
-- Previne downgrade attacks (HTTPS → HTTP)
-- `max-age=31536000` = 1 ano
-
-**Permissions Policy:**
-
-- Controla quais features navegador pode usar
-- Exemplos: camera, microphone, geolocation
-- `geolocation=(), camera=(), microphone=()` = desabilita tudo
-
-**X-Frame-Options:**
-
-- Previne aplicação ser carregada em iframe
-- Proteção contra clickjacking
-- `DENY` = nunca permitir iframe
-
-**Métrica de segurança:**
-
-- "Score A+ em securityheaders.com"
-- "Todos os headers OWASP implementados"
-
-**Modificações de Código:** ✅ Sim
-
-**Arquivos modificados:**
-
-- `src/middleware.js` - Adicionar todos security headers
-
-**Código a implementar:**
-
-```javascript
-// src/middleware.js (ADICIONAR SECURITY HEADERS)
-export async function middleware(request) {
-  const origin = request.headers.get("origin") || "";
-
-  // 1. Tratar preflight
-  if (request.method === "OPTIONS") {
-    return createPreflightResponse(origin);
-  }
-
-  // 2. Gerar nonce para CSP
-  const nonce = generateNonce();
-
-  // 3. Continuar com lógica normal
-  let response = await updateSession(request);
-
-  // 4. CORS headers
-  const corsHeaders = getCorsHeaders(origin);
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    if (value) response.headers.set(key, value);
-  });
-
-  // 5. CSP header
+  // 5. ✅ CSP com nonce
   response.headers.set("Content-Security-Policy", getCSPHeader(nonce));
   response.headers.set("x-nonce", nonce);
 
-  // 6. ✅ SECURITY HEADERS AVANÇADOS
+  // 6. ✅ SECURITY HEADERS ESSENCIAIS
 
   // HSTS: Force HTTPS por 1 ano (apenas em produção)
   if (process.env.NODE_ENV === "production") {
@@ -2730,23 +2575,65 @@ export async function middleware(request) {
 
   return response;
 }
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
 ```
 
-**Teste com securityheaders.com:**
+**Teste manual (demonstração ao vivo):**
+
+```javascript
+// 1. Ver todos headers no DevTools
+// DevTools → Network → Headers → Response Headers
+// Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-abc123'; ...
+// Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+// X-Frame-Options: DENY
+// X-Content-Type-Options: nosniff
+// Referrer-Policy: strict-origin-when-cross-origin
+// Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+// 2. Testar CSP: Tentar injetar script sem nonce (simular XSS)
+// Adicionar no HTML: <script>alert('XSS')</script>
+// Console: "Refused to execute inline script because it violates CSP directive"
+// ✅ BLOQUEADO pelo navegador!
+
+// 3. Script com nonce funciona
+// <script nonce="abc123">console.log('OK')</script>
+// → Executa normalmente ✅
+
+// 4. Ver violação reportada
+// Logs: [CSP_VIOLATION] blocked-uri: "inline", violated-directive: "script-src"
+
+// 5. Verificar todos headers implementados
+// Contar: 7 security headers configurados ✅
+```
+
+**Explicação verbal (importante):**
 
 ```
-1. Deploy da aplicação em produção
-2. Acessar https://securityheaders.com
-3. Inserir URL: https://seu-dominio.com
-4. Resultado esperado: A+ ✅
+Como CSP protege contra XSS:
 
-Headers detectados:
-✅ Content-Security-Policy
-✅ Strict-Transport-Security (HSTS)
-✅ X-Frame-Options
-✅ X-Content-Type-Options
-✅ Referrer-Policy
-✅ Permissions-Policy
+1. Atacante injeta: <script>alert('XSS')</script>
+
+2. HTML chega ao navegador
+
+3. Navegador verifica CSP:
+   ├─ Diretiva: script-src 'self' 'nonce-abc123'
+   ├─ Script injetado: sem nonce
+   └─ DECISÃO: BLOQUEAR ❌
+
+4. Console: "Refused to execute... violates CSP"
+
+5. Aplicação continua funcionando ✅
+   └─ Scripts legítimos têm nonce correto
+
+Defesa em profundidade:
+├─ Camada 1: Sanitização (DOMPurify) → Remove scripts
+├─ Camada 2: CSP → Bloqueia se bypass de sanitização
+└─ Se ambas falharem: Logs de violação CSP
 ```
 
 ---
@@ -2910,9 +2797,10 @@ MÓDULO 3: RBAC e ABAC (52 min, 4 vídeos) ⭐ SIMPLIFICADO
 
   💡 Evolução progressiva na MESMA feature (delete post)
 
-MÓDULO 4: CORS e Headers (45 min, 4 vídeos)
-  ├─ CORS (2 vídeos)
-  └─ CSP e headers (2 vídeos)
+MÓDULO 4: CORS e Headers (37 min, 3 vídeos)
+  ├─ CORS teoria (1 vídeo)
+  ├─ CORS implementação (1 vídeo)
+  └─ CSP + Security Headers (1 vídeo)
 
 MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
   ├─ Preparação e testes (2 vídeos)
@@ -2927,9 +2815,9 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 ## 📈 Métricas do Curso
 
 - **Total de Módulos**: 5
-- **Total de Vídeos**: 26
-- **Duração Total**: ~4h 11min
-- **Commits Esperados**: ~20 (com código)
+- **Total de Vídeos**: 25
+- **Duração Total**: ~3h 59min
+- **Commits Esperados**: ~19 (com código)
 - **Arquivos Novos**: ~36+
 - **Arquivos Modificados**: ~21+
 - **Arquivos Deletados**: 1 (passwordReset.js)
