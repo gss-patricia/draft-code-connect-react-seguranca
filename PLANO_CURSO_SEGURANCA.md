@@ -2638,128 +2638,270 @@ Defesa em profundidade:
 
 ---
 
-### **MÓDULO 5: Deploy Seguro e Boas Práticas (50 min)**
+### **MÓDULO 5: Deploy Seguro e Boas Práticas (48 min, 5 vídeos)**
 
-#### 🎥 Vídeo 5.1: Preparando para Produção (12 min)
+#### 🎥 Vídeo 5.1: Checklist de Segurança + npm audit (12 min)
 
-**Commit:** `video-5.1-preparacao-producao`
+**Commit:** `video-5.1-checklist-audit`
 
-- Checklist de segurança
-- Variáveis de ambiente
-- Build otimizado
-- Auditoria final
+**[CONTEXTO]**
+
+Antes de fazer deploy em produção, é fundamental fazer uma **auditoria completa de segurança**. Este vídeo ensina a usar `npm audit` para detectar vulnerabilidades em dependências, criar um checklist de segurança, e preparar variáveis de ambiente para produção.
+
+**[PROBLEMA]**
+
+Aplicações em produção frequentemente têm:
+
+- Dependências com vulnerabilidades conhecidas (CVEs)
+- Variáveis de ambiente expostas no código
+- Secrets commitados no Git
+- Build sem otimizações de segurança
+
+**[SOLUÇÃO]**
+
+1. **Rodar npm audit** e corrigir vulnerabilidades críticas
+2. **Criar checklist de segurança** pré-deploy
+3. **Configurar variáveis de ambiente** para produção
+4. **Limpar código** de secrets e debug info
+
+**Conteúdo:**
+
+1. **npm audit e correção (5 min)**
+
+   - Rodar `npm audit` e entender report
+   - Corrigir vulnerabilidades: `npm audit fix`
+   - Revisar breaking changes
+   - Quando ignorar vulnerabilidades (justificar)
+
+2. **Criar checklist de segurança (4 min)**
+
+   - Criar `SECURITY_CHECKLIST.md`
+   - Itens essenciais: CORS, CSP, HSTS, RBAC, sanitização
+   - Verificar cada item antes de deploy
+
+3. **Preparar para produção (3 min)**
+
+   - Criar `.env.production.example`
+   - Atualizar `.gitignore`
+   - Remover console.logs
+   - Verificar que nenhum secret está no código
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `SECURITY_CHECKLIST.md`
-- `.env.production.example`
+- `SECURITY_CHECKLIST.md` - Checklist pré-deploy
+- `.env.production.example` - Template de env vars
 
 **Arquivos modificados:**
 
-- `.gitignore` - secrets
-- `package.json` - scripts de prod
+- `.gitignore` - Garantir secrets não commitados
+- `package.json` - Scripts de audit
 
 ---
 
-#### 🎥 Vídeo 5.2: Testes de Segurança (15 min)
+#### 🎥 Vídeo 5.2: Dependabot - Atualizações Automáticas (10 min)
 
-**Commit:** `video-5.2-testes-seguranca`
+**Commit:** `video-5.2-dependabot`
 
-- Unit tests para sanitização
-- Integration tests para RBAC
-- E2E security tests
-- npm audit e dependency scanning
+**[CONTEXTO]**
+
+Vulnerabilidades em dependências são descobertas constantemente. **Dependabot** monitora automaticamente suas dependências e cria Pull Requests para atualizá-las quando vulnerabilidades são encontradas. É essencial para manter a aplicação segura em produção.
+
+**[PROBLEMA]**
+
+Sem automação:
+
+- Vulnerabilidades ficam sem correção por meses
+- Difícil acompanhar updates de todas as deps
+- Equipe não é notificada de CVEs críticos
+
+**[SOLUÇÃO]**
+
+Configurar Dependabot para:
+
+1. Monitorar vulnerabilidades em dependências
+2. Criar PRs automáticos com updates
+3. Priorizar updates de segurança
+
+**Conteúdo:**
+
+1. **Entender Dependabot (3 min)**
+
+   - O que é e como funciona
+   - GitHub Security Advisories
+   - Diferença entre security updates e version updates
+
+2. **Configurar dependabot.yml (4 min)**
+
+   - Criar `.github/dependabot.yml`
+   - Configurar para npm
+   - Schedule: daily, weekly
+   - Labels e reviewers
+
+3. **Testar e gerenciar PRs (3 min)**
+
+   - Ver PRs criados pelo Dependabot
+   - Como revisar e aprovar
+   - Estratégia de merge
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `src/__tests__/security/sanitize.test.js`
-- `src/__tests__/security/rbac.test.js`
-- `playwright/security/auth.spec.js`
+- `.github/dependabot.yml` - Configuração Dependabot
+
+---
+
+#### 🎥 Vídeo 5.3: GitHub Actions - Security Workflow (12 min)
+
+**Commit:** `video-5.3-github-actions`
+
+**[CONTEXTO]**
+
+**GitHub Actions** permite automatizar verificações de segurança em cada Pull Request e commit. Vamos criar um workflow que roda `npm audit`, verifica linter de segurança, e bloqueia merge se houver vulnerabilidades críticas.
+
+**[PROBLEMA]**
+
+Sem CI/CD de segurança:
+
+- Vulnerabilidades chegam em produção
+- Code review não pega problemas de segurança
+- Sem processo padronizado de verificação
+
+**[SOLUÇÃO]**
+
+Criar workflow que:
+
+1. Roda npm audit em cada PR
+2. Bloqueia merge se houver vulnerabilidades críticas
+3. Verifica headers de segurança (opcional)
+
+**Conteúdo:**
+
+1. **Criar workflow de segurança (5 min)**
+
+   - Criar `.github/workflows/security.yml`
+   - Job: npm audit
+   - Job: linter
+   - Fail se vulnerabilidades críticas
+
+2. **Configurar proteção de branch (3 min)**
+
+   - Require checks to pass
+   - Status checks: security workflow
+   - Bloquear merge se falhar
+
+3. **Testar workflow (4 min)**
+
+   - Criar PR de teste
+   - Ver workflow rodar
+   - Simular falha (dep vulnerável)
+   - Ver bloqueio de merge
+
+**Modificações de Código:** ✅ Sim
+
+**Arquivos criados:**
+
+- `.github/workflows/security.yml` - Workflow de segurança
+
+---
+
+#### 🎥 Vídeo 5.4: Deploy na Vercel + Monitoramento (10 min)
+
+**Commit:** `video-5.4-deploy-monitoring`
+
+**[CONTEXTO]**
+
+Fazer deploy na **Vercel** com configurações seguras: variáveis de ambiente protegidas, HTTPS forçado, e monitoramento de logs de segurança.
+
+**[PROBLEMA]**
+
+Deploy inseguro:
+
+- Env vars expostas
+- HTTP sem HTTPS
+- Sem logs de eventos de segurança
+- Sem alertas de problemas
+
+**[SOLUÇÃO]**
+
+1. Deploy seguro na Vercel
+2. Configurar env vars
+3. Monitorar logs de segurança
+
+**Conteúdo:**
+
+1. **Configurar deploy (4 min)**
+
+   - Criar projeto na Vercel
+   - Adicionar env vars (não commitar!)
+   - Configurar domínio
+   - Testar deployment
+
+2. **Verificar segurança (3 min)**
+
+   - HTTPS ativo? ✅
+   - Headers funcionando? (usar securityheaders.com)
+   - CSP bloqueando scripts? ✅
+
+3. **Monitoramento básico (3 min)**
+
+   - Ver logs na Vercel
+   - Eventos de segurança logados
+   - Setup de alertas (opcional)
+
+**Modificações de Código:** ✅ Sim
+
+**Arquivos criados:**
+
+- `vercel.json` - Configuração Vercel
+- `docs/DEPLOY_GUIDE.md` - Guia de deploy
 
 **Arquivos modificados:**
 
-- `package.json` - test scripts
+- `README.md` - Instruções de deploy
 
 ---
 
-#### 🎥 Vídeo 5.3: CI/CD com Segurança (13 min)
+#### 🎥 Vídeo 5.5: Conclusão e Recursos (8 min)
 
-**Commit:** `video-5.3-cicd-seguranca`
+**Commit:** `video-5.5-conclusao`
 
-- GitHub Actions para security
-- Dependabot
-- Pre-commit hooks
-- Security scanning automático
+**[CONTEXTO]**
 
-**Modificações de Código:** ✅ Sim
+Review final de todos os conceitos, recursos adicionais para aprofundamento, e próximos passos na jornada de segurança.
 
-**Arquivos criados:**
+**Conteúdo:**
 
-- `.github/workflows/security.yml`
-- `.github/dependabot.yml`
-- `.husky/pre-commit`
+1. **Review do curso (3 min)**
 
----
+   - Módulo 1: XSS, CSRF
+   - Módulo 2: OAuth, Tokens
+   - Módulo 3: RBAC, ABAC
+   - Módulo 4: CORS, CSP, Headers
+   - Módulo 5: npm audit, Dependabot, Deploy
 
-#### 🎥 Vídeo 5.4: Deploy na Vercel (13 min)
+2. **Recursos adicionais (3 min)**
 
-**Commit:** `video-5.4-deploy-vercel`
+   - OWASP Top 10
+   - OWASP ASVS
+   - Web Security Academy (PortSwigger)
+   - Comunidades: OWASP, Security BSides
 
-- Configurar projeto na Vercel
-- Variáveis de ambiente seguras
-- Preview deployments
-- Monitoring e logs
+3. **Próximos passos (2 min)**
 
-**Modificações de Código:** ✅ Sim
-
-**Arquivos criados:**
-
-- `vercel.json`
-- `docs/DEPLOY_GUIDE.md`
-
-**Arquivos modificados:**
-
-- `README.md` - instruções de deploy
-
----
-
-#### 🎥 Vídeo 5.5: Monitoramento e Alertas (10 min)
-
-**Commit:** `video-5.5-monitoring`
-
-- Logs de segurança em produção
-- Alertas de eventos críticos
-- Dashboard de segurança
-- Análise de logs com Vercel
-
-**Modificações de Código:** ✅ Sim
-
-**Arquivos criados:**
-
-- `src/app/admin/security/page.js`
-- `src/components/SecurityDashboard/index.jsx`
-
----
-
-#### 🎥 Vídeo 5.6: Conclusão e Próximos Passos (8 min)
-
-**Commit:** `video-5.6-conclusao`
-
-- Review de todos os conceitos
-- Recursos adicionais
-- Comunidades e certificações
-- Encerramento
+   - Certificações: OSCP, CEH
+   - Bug Bounty platforms
+   - Continuar aprendendo
+   - Encerramento
 
 **Modificações de Código:** ❌ Nenhuma
 
 **Arquivos modificados:**
 
-- `README.md` - badges de segurança
-- `docs/RESOURCES.md`
+- `README.md` - Badges de segurança
+- `docs/RESOURCES.md` - Recursos adicionais
 
 ---
 
@@ -2802,12 +2944,14 @@ MÓDULO 4: CORS e Headers (37 min, 3 vídeos)
   ├─ CORS implementação (1 vídeo)
   └─ CSP + Security Headers (1 vídeo)
 
-MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
-  ├─ Preparação e testes (2 vídeos)
-  ├─ CI/CD (1 vídeo)
-  ├─ Deploy (1 vídeo)
-  ├─ Monitoring (1 vídeo)
+MÓDULO 5: Deploy e Produção (48 min, 5 vídeos) ⭐ FOCO EM DETECÇÃO
+  ├─ npm audit + Checklist (1 vídeo)
+  ├─ Dependabot (1 vídeo)
+  ├─ GitHub Actions (1 vídeo)
+  ├─ Deploy + Monitoring (1 vídeo)
   └─ Conclusão (1 vídeo)
+  
+  💡 Foco em ferramentas de detecção de vulnerabilidades
 ```
 
 ---
@@ -2815,12 +2959,19 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 ## 📈 Métricas do Curso
 
 - **Total de Módulos**: 5
-- **Total de Vídeos**: 25
-- **Duração Total**: ~3h 59min
+- **Total de Vídeos**: 24
+- **Duração Total**: ~4h 16min
 - **Commits Esperados**: ~19 (com código)
-- **Arquivos Novos**: ~36+
-- **Arquivos Modificados**: ~21+
+- **Arquivos Novos**: ~30+
+- **Arquivos Modificados**: ~20+
 - **Arquivos Deletados**: 1 (passwordReset.js)
+
+**Distribuição:**
+- Módulo 1: 7 vídeos (52 min) - Fundamentos + XSS + CSRF
+- Módulo 2: 5 vídeos (67 min) - OAuth e Tokens
+- Módulo 3: 4 vídeos (52 min) - RBAC e ABAC
+- Módulo 4: 3 vídeos (37 min) - CORS e Headers
+- Módulo 5: 5 vídeos (48 min) - **npm audit, Dependabot, Deploy**
 
 ---
 
@@ -2995,6 +3146,137 @@ Token Binding vincula um token de autenticação a um dispositivo específico us
 - ❌ Complexidade de implementação
 - ❌ Falsos positivos (VPN, viagens, dispositivos compartilhados)
 - ❌ Privacidade (fingerprinting pode ser invasivo)
+
+---
+
+### 🧪 Testes de Segurança (Avançado)
+
+**Por que não está no curso:**
+
+- Testes unitários/E2E são tópicos avançados que merecem curso dedicado
+- Curso foca em **detecção de vulnerabilidades** (npm audit, Dependabot, scanning)
+- Maioria das aplicações usa ferramentas automáticas ao invés de testes manuais
+- Escopo do curso é segurança aplicada, não testing
+
+**O que é:**
+
+Testes automatizados para validar implementações de segurança:
+- **Unit tests**: Testar sanitização (DOMPurify, validação de inputs)
+- **Integration tests**: Testar RBAC/ABAC, fluxos de autenticação
+- **E2E tests**: Simular ataques XSS/CSRF e verificar bloqueio
+
+**Quando usar:**
+
+- Aplicações enterprise com requisitos de auditoria
+- CI/CD robusto com cobertura de código
+- Equipes grandes com tempo para escrever testes
+- Compliance que exige testes automatizados
+
+**Exemplo de teste de sanitização:**
+
+```javascript
+// src/__tests__/security/sanitize.test.js
+import DOMPurify from "isomorphic-dompurify";
+
+describe("Sanitização XSS", () => {
+  test("deve remover script tags", () => {
+    const malicious = '<script>alert("XSS")</script><p>Texto</p>';
+    const clean = DOMPurify.sanitize(malicious);
+    expect(clean).not.toContain("<script>");
+    expect(clean).toContain("<p>Texto</p>");
+  });
+
+  test("deve remover event handlers", () => {
+    const malicious = '<img src=x onerror="alert(1)">';
+    const clean = DOMPurify.sanitize(malicious);
+    expect(clean).not.toContain("onerror");
+  });
+
+  test("deve remover javascript: protocol", () => {
+    const malicious = '<a href="javascript:alert(1)">Link</a>';
+    const clean = DOMPurify.sanitize(malicious);
+    expect(clean).not.toContain("javascript:");
+  });
+});
+```
+
+**Exemplo de teste RBAC:**
+
+```javascript
+// src/__tests__/security/rbac.test.js
+import { canDeletePost } from "@/lib/authorization";
+
+describe("RBAC - Autorização de Delete Post", () => {
+  test("admin pode deletar qualquer post", () => {
+    const admin = { id: 1, role: "admin" };
+    const post = { id: 10, authorId: 2, reportCount: 0 };
+    expect(canDeletePost(admin, post)).toBe(true);
+  });
+
+  test("usuário comum não pode deletar post de outro", () => {
+    const user = { id: 1, role: "user" };
+    const post = { id: 10, authorId: 2, reportCount: 0 };
+    expect(canDeletePost(user, post)).toBe(false);
+  });
+
+  test("moderador pode deletar post com 3+ reports", () => {
+    const mod = { id: 1, role: "moderator" };
+    const post = { id: 10, authorId: 2, reportCount: 5 };
+    expect(canDeletePost(mod, post)).toBe(true);
+  });
+
+  test("moderador não pode deletar post com < 3 reports", () => {
+    const mod = { id: 1, role: "moderator" };
+    const post = { id: 10, authorId: 2, reportCount: 2 };
+    expect(canDeletePost(mod, post)).toBe(false);
+  });
+});
+```
+
+**Exemplo de teste E2E (Playwright):**
+
+```javascript
+// playwright/security/xss.spec.js
+import { test, expect } from "@playwright/test";
+
+test("CSP deve bloquear script inline sem nonce", async ({ page }) => {
+  // Interceptar console errors
+  const errors = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(msg.text());
+  });
+
+  await page.goto("/profile/edit");
+
+  // Tentar injetar script malicioso
+  await page.fill('[name="bio"]', '<script>alert("XSS")</script>');
+  await page.click("button[type=submit]");
+
+  // Verificar que CSP bloqueou
+  expect(errors.some((e) => e.includes("CSP"))).toBe(true);
+
+  // Verificar que alert NÃO foi executado
+  const dialogs = [];
+  page.on("dialog", (dialog) => dialogs.push(dialog));
+  expect(dialogs.length).toBe(0);
+});
+```
+
+**Recursos para aprender mais:**
+
+- [Testing Library - Security Testing](https://testing-library.com/)
+- [Playwright Security Testing](https://playwright.dev/)
+- [OWASP Testing Guide](https://owasp.org/www-project-web-security-testing-guide/)
+- [Jest Security Best Practices](https://jestjs.io/docs/security)
+
+**Tradeoffs:**
+
+- ✅ Validação automatizada de implementações
+- ✅ CI/CD pode bloquear merge de código inseguro
+- ✅ Documenta comportamento esperado
+- ❌ Requer tempo e expertise para escrever
+- ❌ Manutenção de testes pode ser custosa
+- ❌ Falsos negativos (teste passa mas vulnerabilidade existe)
 
 ---
 
