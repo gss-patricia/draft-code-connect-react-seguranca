@@ -9,7 +9,7 @@
 - **Pré-requisitos**: React, Next.js, Node.js
 - **Projeto Base**: Code Connect (rede social para devs)
 - **Módulos**: 5
-- **Vídeos por módulo**: 4-7 vídeos de 8-15 min
+- **Vídeos por módulo**: 4-8 vídeos de 8-15 min
 
 ---
 
@@ -27,7 +27,7 @@ Ao final do curso, o aluno será capaz de:
 
 ## 📚 Módulos e Vídeos
 
-### **MÓDULO 1: Fundamentos e Proteção Contra Ataques (60 min)**
+### **MÓDULO 1: Fundamentos e Proteção Contra Ataques (62 min)**
 
 #### 🎥 Vídeo 1.1: Estrutura do Projeto (10 min)
 
@@ -148,50 +148,20 @@ Ao final do curso, o aluno será capaz de:
 
 ---
 
-#### 🎥 Vídeo 1.4: Security Headers no Next.js (10 min)
+#### 🎥 Vídeo 1.4: Proteção contra XSS - Parte 1 (12 min)
 
-**Commit:** `video-1.4-security-headers`
-
-- O que são Security Headers e por que usar
-- Implementação no Next.js
-- Testando com securityheaders.com
-
-**Modificações de Código:** ✅ Sim
-
-**Arquivos modificados:**
-
-- `next.config.js` - security headers básicos
-- `middleware.js` - headers adicionais
-
-```javascript
-// next.config.js
-async headers() {
-  return [{
-    source: '/:path*',
-    headers: [
-      { key: 'X-Content-Type-Options', value: 'nosniff' },
-      { key: 'X-Frame-Options', value: 'DENY' },
-      { key: 'X-XSS-Protection', value: '1; mode=block' },
-      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-    ],
-  }];
-}
-```
-
----
-
-#### 🎥 Vídeo 1.5: Proteção contra XSS - Parte 1 (12 min)
-
-**Commit:** `video-1.5-xss-parte-1`
+**Commit:** `video-1.4-xss-parte-1`
 
 **Conteúdo:**
 
 1. **O que é XSS (3 min)**
+
    - Cross-Site Scripting
    - Tipos: Reflected, Stored, DOM-based
    - Por que é perigoso (roubo de cookies, redirecionamento)
 
 2. **Criar componente VULNERÁVEL (4 min)**
+
    - Adicionar campo de bio editável
    - Usar `dangerouslySetInnerHTML` sem sanitização
    - Salvar HTML diretamente no banco
@@ -236,7 +206,7 @@ export async function updateUserBio(bio) {
   const user = await getCurrentUser();
   // ⚠️ PERIGO: Salva HTML malicioso direto no banco
   await database.updateUserBio(user.id, bio);
-  revalidatePath('/profile');
+  revalidatePath("/profile");
   return { success: true };
 }
 ```
@@ -245,30 +215,34 @@ export async function updateUserBio(bio) {
 
 ```html
 <!-- Teste 1: Alert simples -->
-<script>alert('XSS Ataque!')</script>
+<script>
+  alert("XSS Ataque!");
+</script>
 
 <!-- Teste 2: IMG onerror -->
-<img src=x onerror="alert('XSS via IMG')">
+<img src="x" onerror="alert('XSS via IMG')" />
 
 <!-- Teste 3: Roubo de cookie (demonstração) -->
-<img src=x onerror="console.log('Cookie:', document.cookie)">
+<img src="x" onerror="console.log('Cookie:', document.cookie)" />
 ```
 
 ---
 
-#### 🎥 Vídeo 1.6: Proteção contra XSS - Parte 2 (15 min)
+#### 🎥 Vídeo 1.5: Proteção contra XSS - Parte 2 (15 min)
 
-**Commit:** `video-1.6-xss-parte-2`
+**Commit:** `video-1.5-xss-parte-2`
 
 **Conteúdo:**
 
 1. **Solução 1: DOMPurify (6 min)**
+
    - Instalar `isomorphic-dompurify`
    - Criar função de sanitização
    - Aplicar no Server Action
    - Testar: `<script>` é removido, `<b>` é permitido
 
 2. **Solução 2: CSP (5 min)**
+
    - Content Security Policy
    - Bloquear inline scripts
    - Configurar no Next.js
@@ -308,16 +282,16 @@ export function sanitizeHTML(dirty) {
 
 ```javascript
 // src/actions/profile.js (✅ SEGURO)
-import { sanitizeHTML } from '@/lib/sanitize';
+import { sanitizeHTML } from "@/lib/sanitize";
 
 export async function updateUserBio(bio) {
   const user = await getCurrentUser();
-  
+
   // ✅ PROTEÇÃO: Sanitizar antes de salvar
   const safeBio = sanitizeHTML(bio);
-  
+
   await database.updateUserBio(user.id, safeBio);
-  revalidatePath('/profile');
+  revalidatePath("/profile");
   return { success: true };
 }
 ```
@@ -341,28 +315,33 @@ async headers() {
 
 ```html
 <!-- Entrada do usuário -->
-Olá! <b>Sou dev</b> <script>alert('XSS')</script>
+Olá! <b>Sou dev</b>
+<script>
+  alert("XSS");
+</script>
 
 <!-- Saída sanitizada (após DOMPurify) -->
-Olá! <b>Sou dev</b> 
+Olá! <b>Sou dev</b>
 <!-- script foi removido ✅ -->
 ```
 
 ---
 
-#### 🎥 Vídeo 1.7: Proteção contra CSRF - Parte 1 (12 min)
+#### 🎥 Vídeo 1.6: Proteção contra CSRF - Parte 1 (12 min)
 
-**Commit:** `video-1.7-csrf-parte-1`
+**Commit:** `video-1.6-csrf-parte-1`
 
 **Conteúdo:**
 
 1. **O que é CSRF (4 min)**
+
    - Cross-Site Request Forgery
    - Ataque: site malicioso faz request autenticado
    - Exemplo real: deletar post sem querer
    - Diferença de XSS: não precisa de input do usuário
 
 2. **Criar funcionalidade VULNERÁVEL (3 min)**
+
    - Botão de delete post (sem proteção)
    - Server Action sem validação de origem
    - Testar: funciona normalmente
@@ -390,16 +369,16 @@ Olá! <b>Sou dev</b>
 
 ```javascript
 // src/actions/posts.js (⚠️ VULNERÁVEL)
-'use server';
+"use server";
 
 export async function deletePost(postId) {
   const user = await getCurrentUser();
-  
+
   // ⚠️ PERIGO: Não valida origem do request
   // ⚠️ PERIGO: Não tem CSRF token
-  
+
   await database.deletePost(postId);
-  revalidatePath('/');
+  revalidatePath("/");
   return { success: true };
 }
 ```
@@ -408,10 +387,12 @@ export async function deletePost(postId) {
 // src/components/DeletePostButton/index.jsx (⚠️ VULNERÁVEL)
 export function DeletePostButton({ postId }) {
   return (
-    <form action={async () => {
-      'use server';
-      await deletePost(postId);
-    }}>
+    <form
+      action={async () => {
+        "use server";
+        await deletePost(postId);
+      }}
+    >
       <button type="submit">Deletar Post</button>
     </form>
   );
@@ -423,42 +404,48 @@ export function DeletePostButton({ postId }) {
 ```html
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Você ganhou um prêmio! 🎉</title>
-</head>
-<body>
-  <h1>Parabéns! Clique aqui para receber seu prêmio</h1>
-  
-  <!-- Form oculto que deleta um post -->
-  <form id="attack" action="http://localhost:3000/api/posts/delete" method="POST">
-    <input type="hidden" name="postId" value="123">
-  </form>
-  
-  <script>
-    // Submete automaticamente quando a página carrega
-    document.getElementById('attack').submit();
-  </script>
-  
-  <!-- ⚠️ Usuário nem vê isso acontecer -->
-</body>
+  <head>
+    <title>Você ganhou um prêmio! 🎉</title>
+  </head>
+  <body>
+    <h1>Parabéns! Clique aqui para receber seu prêmio</h1>
+
+    <!-- Form oculto que deleta um post -->
+    <form
+      id="attack"
+      action="http://localhost:3000/api/posts/delete"
+      method="POST"
+    >
+      <input type="hidden" name="postId" value="123" />
+    </form>
+
+    <script>
+      // Submete automaticamente quando a página carrega
+      document.getElementById("attack").submit();
+    </script>
+
+    <!-- ⚠️ Usuário nem vê isso acontecer -->
+  </body>
 </html>
 ```
 
 ---
 
-#### 🎥 Vídeo 1.8: Proteção contra CSRF - Parte 2 (13 min)
+#### 🎥 Vídeo 1.7: Proteção contra CSRF - Parte 2 (13 min)
 
-**Commit:** `video-1.8-csrf-parte-2`
+**Commit:** `video-1.7-csrf-parte-2`
 
 **Conteúdo:**
 
 1. **Solução 1: CSRF Tokens (7 min)**
+
    - Gerar token único por sessão
    - Incluir token no form (hidden input)
    - Validar token no servidor
    - Testar: ataque CSRF agora FALHA ✅
 
 2. **Solução 2: SameSite Cookies (3 min)**
+
    - Configurar `SameSite=Strict` ou `Lax`
    - Impede que cookies sejam enviados de outros sites
    - Configurar no Next.js
@@ -502,65 +489,67 @@ export function validateCSRFToken(token, storedToken) {
 
 ```javascript
 // src/middleware.js
-import { generateCSRFToken } from '@/lib/csrf';
+import { generateCSRFToken } from "@/lib/csrf";
 
 export function middleware(request) {
   const response = NextResponse.next();
-  
+
   // ✅ PROTEÇÃO: Gerar token CSRF para cada sessão
-  if (!request.cookies.get('csrf-token')) {
+  if (!request.cookies.get("csrf-token")) {
     const token = generateCSRFToken();
-    response.cookies.set('csrf-token', token, {
+    response.cookies.set("csrf-token", token, {
       httpOnly: true,
-      sameSite: 'strict', // ✅ Proteção adicional
-      secure: process.env.NODE_ENV === 'production'
+      sameSite: "strict", // ✅ Proteção adicional
+      secure: process.env.NODE_ENV === "production",
     });
   }
-  
+
   return response;
 }
 ```
 
 ```javascript
 // src/actions/posts.js (✅ SEGURO)
-'use server';
-import { validateCSRFToken } from '@/lib/csrf';
-import { cookies } from 'next/headers';
+"use server";
+import { validateCSRFToken } from "@/lib/csrf";
+import { cookies } from "next/headers";
 
 export async function deletePost(postId, csrfToken) {
   const user = await getCurrentUser();
   const cookieStore = cookies();
-  const storedToken = cookieStore.get('csrf-token')?.value;
-  
+  const storedToken = cookieStore.get("csrf-token")?.value;
+
   // ✅ PROTEÇÃO: Validar token CSRF
   if (!validateCSRFToken(csrfToken, storedToken)) {
     logSecurityEvent({
-      type: 'CSRF_ATTEMPT',
+      type: "CSRF_ATTEMPT",
       userId: user.id,
-      severity: 'HIGH'
+      severity: "HIGH",
     });
-    throw new Error('Token CSRF inválido');
+    throw new Error("Token CSRF inválido");
   }
-  
+
   await database.deletePost(postId);
-  revalidatePath('/');
+  revalidatePath("/");
   return { success: true };
 }
 ```
 
 ```jsx
 // src/components/DeletePostButton/index.jsx (✅ SEGURO)
-import { cookies } from 'next/headers';
+import { cookies } from "next/headers";
 
 export async function DeletePostButton({ postId }) {
   const cookieStore = cookies();
-  const csrfToken = cookieStore.get('csrf-token')?.value;
-  
+  const csrfToken = cookieStore.get("csrf-token")?.value;
+
   return (
-    <form action={async (formData) => {
-      'use server';
-      await deletePost(postId, csrfToken);
-    }}>
+    <form
+      action={async (formData) => {
+        "use server";
+        await deletePost(postId, csrfToken);
+      }}
+    >
       {/* ✅ Token incluído no form */}
       <input type="hidden" name="csrf" value={csrfToken} />
       <button type="submit">Deletar Post</button>
@@ -587,9 +576,9 @@ export async function DeletePostButton({ postId }) {
 
 ---
 
-#### 🎥 Vídeo 1.9: Prevenindo Vazamento de Tokens (10 min)
+#### 🎥 Vídeo 1.8: Prevenindo Vazamento de Tokens (10 min)
 
-**Commit:** `video-1.9-vazamento-tokens`
+**Commit:** `video-1.8-vazamento-tokens`
 
 - Problemas: localStorage, logs, URLs, errors
 - Sanitizar logs de segurança
@@ -1225,15 +1214,19 @@ export function getCSPHeader(nonce) {
 ## 📊 Estrutura Resumida
 
 ```
-MÓDULO 1: Fundamentos e Proteção (74 min, 9 vídeos)
+MÓDULO 1: Fundamentos e Proteção (62 min, 8 vídeos)
   ├─ Fundamentos (3 vídeos)
   │  ├─ 1.1: Estrutura do Projeto
   │  ├─ 1.2: OWASP e Auditoria
   │  └─ 1.3: Os 3 Pilares
-  ├─ Headers (1 vídeo)
   ├─ XSS (2 vídeos)
+  │  ├─ 1.4: XSS Parte 1 (Ataque)
+  │  └─ 1.5: XSS Parte 2 (Proteção)
   ├─ CSRF (2 vídeos)
+  │  ├─ 1.6: CSRF Parte 1 (Ataque)
+  │  └─ 1.7: CSRF Parte 2 (Proteção)
   └─ Vazamento de tokens (1 vídeo)
+      └─ 1.8: Prevenção de Vazamento
 
 MÓDULO 2: OAuth e Tokens (50 min, 4 vídeos)
   ├─ OAuth flow (1 vídeo)
@@ -1266,11 +1259,11 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 ## 📈 Métricas do Curso
 
 - **Total de Módulos**: 5
-- **Total de Vídeos**: 27
-- **Duração Total**: ~4h 14min
-- **Commits Esperados**: ~22 (com código)
-- **Arquivos Novos**: ~45+
-- **Arquivos Modificados**: ~25+
+- **Total de Vídeos**: 26
+- **Duração Total**: ~4h 04min
+- **Commits Esperados**: ~21 (com código)
+- **Arquivos Novos**: ~43+
+- **Arquivos Modificados**: ~23+
 
 ---
 
@@ -1279,7 +1272,7 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 ### ✅ Proteção contra XSS, CSRF e vazamento de tokens
 
 - **Módulo 1**: 100% focado neste tópico
-- 5 vídeos dedicados (1.3 a 1.7)
+- 5 vídeos dedicados (1.4 a 1.8)
 - Implementação prática de todas as proteções
 
 ### ✅ OAuth e fluxos com refresh token seguro
