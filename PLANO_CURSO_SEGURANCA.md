@@ -573,7 +573,7 @@ export async function DeletePostButton({ postId }) {
 
 ---
 
-### **MÓDULO 2: OAuth e Gestão Segura de Tokens (60 min)**
+### **MÓDULO 2: OAuth e Gestão Segura de Tokens (51 min)**
 
 #### 🎥 Vídeo 2.1: Prevenindo Vazamento de Tokens (10 min)
 
@@ -582,6 +582,7 @@ export async function DeletePostButton({ postId }) {
 **Conteúdo:**
 
 1. **Onde tokens podem vazar (3 min)**
+
    - localStorage (acessível via XSS)
    - Logs do servidor (Winston, Vercel)
    - URLs (query params)
@@ -589,6 +590,7 @@ export async function DeletePostButton({ postId }) {
    - Headers HTTP (Referer, etc)
 
 2. **Demonstrar problema nos logs (3 min)**
+
    - Abrir `src/actions/auth.js`
    - Mostrar: se logar `data` completo → vaza session.access_token
    - Exemplo: `logEvent({ step: 'AUTH', metadata: data })` ⚠️
@@ -647,7 +649,7 @@ export function sanitizeForLog(data) {
 
 ```javascript
 // src/eventLogger.js (MODIFICAR)
-import { sanitizeForLog } from './lib/logSanitizer';
+import { sanitizeForLog } from "./lib/logSanitizer";
 
 export function logEvent({ step, operation, userId, metadata = {} }) {
   const context = formatEventContext(userId, {
@@ -666,18 +668,18 @@ export function logEvent({ step, operation, userId, metadata = {} }) {
 
 ```javascript
 // ❌ ERRADO: Logar objeto completo
-logEvent({ 
-  step: 'AUTH', 
-  operation: 'LOGIN',
-  metadata: { userData: data } // ⚠️ Contém tokens!
-})
+logEvent({
+  step: "AUTH",
+  operation: "LOGIN",
+  metadata: { userData: data }, // ⚠️ Contém tokens!
+});
 
 // ✅ CORRETO: Logar apenas o necessário
-logEvent({ 
-  step: 'AUTH', 
-  operation: 'LOGIN',
-  userId: data.user?.id // Só o ID
-})
+logEvent({
+  step: "AUTH",
+  operation: "LOGIN",
+  userId: data.user?.id, // Só o ID
+});
 ```
 
 ---
@@ -742,31 +744,9 @@ export async function detectTokenReuse(userId, tokenId) {
 
 ---
 
-#### 🎥 Vídeo 2.4: Token Binding (12 min)
+#### 🎥 Vídeo 2.4: Reset Password Seguro (14 min)
 
-**Commit:** `video-2.4-token-binding`
-
-- Vincular token ao dispositivo
-- Device fingerprinting
-- Validação a cada request
-
-**Modificações de Código:** ✅ Sim
-
-**Arquivos criados:**
-
-- `src/lib/deviceFingerprint.js`
-- `supabase/migrations/003_token_binding.sql`
-
-**Arquivos modificados:**
-
-- `src/utils/supabase/server.js`
-- `src/middleware.js`
-
----
-
-#### 🎥 Vídeo 2.5: Reset Password Seguro (14 min)
-
-**Commit:** `video-2.5-reset-password`
+**Commit:** `video-2.4-reset-password`
 
 - Fluxo seguro de reset
 - Token com hash no banco
@@ -1275,17 +1255,15 @@ MÓDULO 1: Fundamentos e Proteção (52 min, 7 vídeos)
       ├─ 1.6: CSRF Parte 1 - Ataque (12 min)
       └─ 1.7: CSRF Parte 2 - Proteção (13 min)
 
-MÓDULO 2: OAuth e Tokens (63 min, 5 vídeos)
+MÓDULO 2: OAuth e Tokens (51 min, 4 vídeos)
   ├─ Vazamento de tokens (1 vídeo)
   │  └─ 2.1: Prevenção de Vazamento (10 min)
   ├─ OAuth flow (1 vídeo)
   │  └─ 2.2: OAuth 2.0 (12 min)
   ├─ Refresh tokens (1 vídeo)
   │  └─ 2.3: Refresh Token Security (15 min)
-  ├─ Token binding (1 vídeo)
-  │  └─ 2.4: Token Binding (12 min)
   └─ Reset password (1 vídeo)
-      └─ 2.5: Reset Password Seguro (14 min)
+      └─ 2.4: Reset Password Seguro (14 min)
 
 MÓDULO 3: RBAC e ABAC (52 min, 4 vídeos) ⭐ SIMPLIFICADO
   ├─ Introdução (1 vídeo)
@@ -1312,10 +1290,10 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 ## 📈 Métricas do Curso
 
 - **Total de Módulos**: 5
-- **Total de Vídeos**: 26
-- **Duração Total**: ~4h 07min
-- **Commits Esperados**: ~21 (com código)
-- **Arquivos Novos**: ~43+
+- **Total de Vídeos**: 25
+- **Duração Total**: ~3h 55min
+- **Commits Esperados**: ~20 (com código)
+- **Arquivos Novos**: ~40+
 - **Arquivos Modificados**: ~23+
 
 ---
@@ -1331,8 +1309,8 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 ### ✅ OAuth e fluxos com refresh token seguro
 
 - **Módulo 2**: 100% focado neste tópico
-- 4 vídeos dedicados (2.2 a 2.5)
-- OAuth flow, token rotation, binding, reset password
+- 3 vídeos dedicados (2.2 a 2.4)
+- OAuth flow, token rotation, reset password
 
 ### ✅ Autorização baseada em papéis (RBAC) e atributos (ABAC)
 
@@ -1451,6 +1429,37 @@ git diff video-1.3 video-1.4
 # Ver arquivos modificados
 git show video-1.3 --stat
 ```
+
+---
+
+## 📖 Conteúdo Complementar (Para Saber Mais)
+
+### 🔐 Token Binding (Avançado)
+
+**Por que não está no curso:**
+- Muito específico e complexo para um curso introdutório
+- Requer infraestrutura adicional (device fingerprinting, tabelas de binding)
+- Maioria das aplicações não precisa desse nível de segurança
+- Supabase já implementa proteções suficientes
+
+**O que é:**
+Token Binding vincula um token de autenticação a um dispositivo específico usando fingerprinting (user agent, IP, canvas fingerprint, etc). Se o token for roubado e usado de outro dispositivo, é detectado e bloqueado.
+
+**Quando usar:**
+- Aplicações de alta segurança (bancos, governo)
+- Compliance rigoroso (PCI-DSS Level 1)
+- Ambientes onde device hijacking é preocupação real
+
+**Recursos para aprender mais:**
+- [RFC 8473 - Token Binding over HTTP](https://datatracker.ietf.org/doc/html/rfc8473)
+- [OWASP - Token Binding](https://cheatsheetseries.owasp.org/cheatsheets/Token_Binding_Cheat_Sheet.html)
+- [FingerprintJS](https://fingerprintjs.com/) - Library de device fingerprinting
+
+**Tradeoffs:**
+- ✅ Segurança adicional contra roubo de tokens
+- ❌ Complexidade de implementação
+- ❌ Falsos positivos (VPN, viagens, dispositivos compartilhados)
+- ❌ Privacidade (fingerprinting pode ser invasivo)
 
 ---
 
