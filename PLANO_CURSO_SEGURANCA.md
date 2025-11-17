@@ -160,11 +160,11 @@ Ao final do curso, o aluno será capaz de:
    - Tipos: Reflected, Stored, DOM-based
    - Por que é perigoso (roubo de cookies, redirecionamento)
 
-2. **Criar componente VULNERÁVEL (4 min)**
+2. **Explorar código vulnerável existente (4 min)**
 
-   - Adicionar campo de bio editável
-   - Usar `dangerouslySetInnerHTML` sem sanitização
-   - Salvar HTML diretamente no banco
+   - Mostrar `UserBio` existente com `dangerouslySetInnerHTML`
+   - Explicar por que está vulnerável (sem sanitização)
+   - Mostrar página `/profile/edit` que já existe
 
 3. **Demonstrar o Ataque (5 min)**
    - Inserir `<script>alert('XSS Ataque!')</script>` na bio
@@ -172,18 +172,15 @@ Ao final do curso, o aluno será capaz de:
    - Inserir `<img src=x onerror="alert('XSS')">`
    - Explicar o perigo real (roubo de tokens, cookies)
 
-**Modificações de Código:** ✅ Sim
+**Modificações de Código:** ✅ Sim (apenas documentação)
 
 **Arquivos criados:**
 
-- `src/components/UserBio/index.jsx` - Componente VULNERÁVEL
-- `src/app/profile/edit/page.js` - Página de edição
-- `docs/XSS_ATTACK_DEMO.md` - Exemplos de payloads XSS
+- `docs/XSS_ATTACK_DEMO.md` - Exemplos de payloads XSS testados
 
 **Arquivos modificados:**
 
-- `src/actions/profile.js` - Salvar bio sem sanitização
-- `src/app/profile/page.js` - Mostrar UserBio
+- ❌ Nenhum (componentes vulneráveis já existem no projeto base)
 
 **Código Vulnerável:**
 
