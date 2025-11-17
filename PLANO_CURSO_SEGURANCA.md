@@ -27,7 +27,7 @@ Ao final do curso, o aluno será capaz de:
 
 ## 📚 Módulos e Vídeos
 
-### **MÓDULO 1: Fundamentos e Proteção Contra Ataques (62 min)**
+### **MÓDULO 1: Fundamentos e Proteção Contra Ataques (52 min)**
 
 #### 🎥 Vídeo 1.1: Estrutura do Projeto (10 min)
 
@@ -573,25 +573,43 @@ export async function DeletePostButton({ postId }) {
 
 ---
 
-#### 🎥 Vídeo 1.8: Prevenindo Vazamento de Tokens (10 min)
+### **MÓDULO 2: OAuth e Gestão Segura de Tokens (60 min)**
 
-**Commit:** `video-1.8-vazamento-tokens`
+#### 🎥 Vídeo 2.1: Prevenindo Vazamento de Tokens (10 min)
 
-- Problemas: localStorage, logs, URLs, errors
-- Sanitizar logs de segurança
-- httpOnly cookies vs localStorage
+**Commit:** `video-2.1-vazamento-tokens`
+
+**Conteúdo:**
+
+1. **Onde tokens podem vazar (3 min)**
+   - localStorage (acessível via XSS)
+   - Logs do servidor (Winston, Vercel)
+   - URLs (query params)
+   - Error messages (stack traces)
+   - Headers HTTP (Referer, etc)
+
+2. **Demonstrar problema nos logs (3 min)**
+   - Abrir `src/actions/auth.js`
+   - Mostrar: se logar `data` completo → vaza session.access_token
+   - Exemplo: `logEvent({ step: 'AUTH', metadata: data })` ⚠️
+   - Abrir `logs/combined.log` - mostrar como ficaria exposto
+
+3. **Implementar sanitização (4 min)**
+   - Criar `src/lib/logSanitizer.js`
+   - Aplicar em `src/eventLogger.js`
+   - Testar: tokens agora aparecem como `[REDACTED]`
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `src/lib/logSanitizer.js`
-- `docs/TOKEN_SECURITY.md`
+- `src/lib/logSanitizer.js` - Função de sanitização
 
 **Arquivos modificados:**
 
-- `src/eventLogger.js` - aplicar sanitização
-- `src/actions/auth.js` - remover dados sensíveis
+- `src/eventLogger.js` - Aplicar sanitização automática
+
+**Código SEGURO:**
 
 ```javascript
 // src/lib/logSanitizer.js
@@ -605,6 +623,7 @@ const SENSITIVE_KEYS = [
   "creditCard",
   "ssn",
   "cpf",
+  "session", // ⚠️ Importante: session contém tokens
 ];
 
 export function sanitizeForLog(data) {
@@ -626,13 +645,46 @@ export function sanitizeForLog(data) {
 }
 ```
 
+```javascript
+// src/eventLogger.js (MODIFICAR)
+import { sanitizeForLog } from './lib/logSanitizer';
+
+export function logEvent({ step, operation, userId, metadata = {} }) {
+  const context = formatEventContext(userId, {
+    step,
+    operation,
+    ...sanitizeForLog(metadata), // ✅ PROTEÇÃO: Sanitizar metadata
+  });
+
+  if (logger) {
+    logger.info(`[EVENT] ${step} -> ${operation}`, context);
+  }
+}
+```
+
+**Boas Práticas:**
+
+```javascript
+// ❌ ERRADO: Logar objeto completo
+logEvent({ 
+  step: 'AUTH', 
+  operation: 'LOGIN',
+  metadata: { userData: data } // ⚠️ Contém tokens!
+})
+
+// ✅ CORRETO: Logar apenas o necessário
+logEvent({ 
+  step: 'AUTH', 
+  operation: 'LOGIN',
+  userId: data.user?.id // Só o ID
+})
+```
+
 ---
 
-### **MÓDULO 2: OAuth e Gestão Segura de Tokens (50 min)**
+#### 🎥 Vídeo 2.2: Entendendo OAuth 2.0 (12 min)
 
-#### 🎥 Vídeo 2.1: Entendendo OAuth 2.0 (12 min)
-
-**Commit:** `video-2.1-oauth-flow`
+**Commit:** `video-2.2-oauth-flow`
 
 - Authorization Code Flow
 - PKCE (Proof Key for Code Exchange)
@@ -647,9 +699,9 @@ export function sanitizeForLog(data) {
 
 ---
 
-#### 🎥 Vídeo 2.2: Refresh Token Security (15 min)
+#### 🎥 Vídeo 2.3: Refresh Token Security (15 min)
 
-**Commit:** `video-2.2-refresh-token`
+**Commit:** `video-2.3-refresh-token`
 
 - Como funcionam refresh tokens
 - Token Rotation (novo token a cada refresh)
@@ -690,9 +742,9 @@ export async function detectTokenReuse(userId, tokenId) {
 
 ---
 
-#### 🎥 Vídeo 2.3: Token Binding (12 min)
+#### 🎥 Vídeo 2.4: Token Binding (12 min)
 
-**Commit:** `video-2.3-token-binding`
+**Commit:** `video-2.4-token-binding`
 
 - Vincular token ao dispositivo
 - Device fingerprinting
@@ -712,9 +764,9 @@ export async function detectTokenReuse(userId, tokenId) {
 
 ---
 
-#### 🎥 Vídeo 2.4: Reset Password Seguro (14 min)
+#### 🎥 Vídeo 2.5: Reset Password Seguro (14 min)
 
-**Commit:** `video-2.4-reset-password`
+**Commit:** `video-2.5-reset-password`
 
 - Fluxo seguro de reset
 - Token com hash no banco
@@ -1211,25 +1263,29 @@ export function getCSPHeader(nonce) {
 ## 📊 Estrutura Resumida
 
 ```
-MÓDULO 1: Fundamentos e Proteção (62 min, 8 vídeos)
+MÓDULO 1: Fundamentos e Proteção (52 min, 7 vídeos)
   ├─ Fundamentos (3 vídeos)
-  │  ├─ 1.1: Estrutura do Projeto
-  │  ├─ 1.2: OWASP e Auditoria
-  │  └─ 1.3: Os 3 Pilares
+  │  ├─ 1.1: Estrutura do Projeto (10 min)
+  │  ├─ 1.2: OWASP e Auditoria (12 min)
+  │  └─ 1.3: Os 3 Pilares (10 min)
   ├─ XSS (2 vídeos)
-  │  ├─ 1.4: XSS Parte 1 (Ataque)
-  │  └─ 1.5: XSS Parte 2 (Proteção)
-  ├─ CSRF (2 vídeos)
-  │  ├─ 1.6: CSRF Parte 1 (Ataque)
-  │  └─ 1.7: CSRF Parte 2 (Proteção)
-  └─ Vazamento de tokens (1 vídeo)
-      └─ 1.8: Prevenção de Vazamento
+  │  ├─ 1.4: XSS Parte 1 - Ataque (12 min)
+  │  └─ 1.5: XSS Parte 2 - Proteção (15 min)
+  └─ CSRF (2 vídeos)
+      ├─ 1.6: CSRF Parte 1 - Ataque (12 min)
+      └─ 1.7: CSRF Parte 2 - Proteção (13 min)
 
-MÓDULO 2: OAuth e Tokens (50 min, 4 vídeos)
+MÓDULO 2: OAuth e Tokens (63 min, 5 vídeos)
+  ├─ Vazamento de tokens (1 vídeo)
+  │  └─ 2.1: Prevenção de Vazamento (10 min)
   ├─ OAuth flow (1 vídeo)
+  │  └─ 2.2: OAuth 2.0 (12 min)
   ├─ Refresh tokens (1 vídeo)
+  │  └─ 2.3: Refresh Token Security (15 min)
   ├─ Token binding (1 vídeo)
+  │  └─ 2.4: Token Binding (12 min)
   └─ Reset password (1 vídeo)
+      └─ 2.5: Reset Password Seguro (14 min)
 
 MÓDULO 3: RBAC e ABAC (52 min, 4 vídeos) ⭐ SIMPLIFICADO
   ├─ Introdução (1 vídeo)
@@ -1257,7 +1313,7 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 
 - **Total de Módulos**: 5
 - **Total de Vídeos**: 26
-- **Duração Total**: ~4h 04min
+- **Duração Total**: ~4h 07min
 - **Commits Esperados**: ~21 (com código)
 - **Arquivos Novos**: ~43+
 - **Arquivos Modificados**: ~23+
@@ -1268,14 +1324,14 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 
 ### ✅ Proteção contra XSS, CSRF e vazamento de tokens
 
-- **Módulo 1**: 100% focado neste tópico
-- 5 vídeos dedicados (1.4 a 1.8)
+- **Módulo 1**: XSS e CSRF (4 vídeos: 1.4 a 1.7)
+- **Módulo 2**: Vazamento de tokens (1 vídeo: 2.1)
 - Implementação prática de todas as proteções
 
 ### ✅ OAuth e fluxos com refresh token seguro
 
 - **Módulo 2**: 100% focado neste tópico
-- 4 vídeos dedicados (2.1 a 2.4)
+- 4 vídeos dedicados (2.2 a 2.5)
 - OAuth flow, token rotation, binding, reset password
 
 ### ✅ Autorização baseada em papéis (RBAC) e atributos (ABAC)
