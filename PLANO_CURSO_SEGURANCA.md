@@ -573,41 +573,58 @@ export async function DeletePostButton({ postId }) {
 
 ---
 
-### **MÓDULO 2: OAuth e Gestão Segura de Tokens (53 min)**
+### **MÓDULO 2: OAuth e Gestão Segura de Tokens (67 min, 5 vídeos)**
 
-#### 🎥 Vídeo 2.1: Reset Password Inseguro - Demonstração (12 min)
+#### 🎥 Vídeo 2.1: Tokens Inseguros - Demonstração Real de Vazamentos (12 min)
 
-**Commit:** `video-2.1-reset-password-vulneravel`
+**Commit:** `video-2.1-tokens-inseguros`
+
+**[CONTEXTO]**
+
+Nosso projeto já tem a funcionalidade de Reset Password implementada. Ela funciona... mas está completamente vulnerável — como acontece em 90% dos sistemas React/Next.js em produção. Este vídeo expõe todos os pontos onde tokens de reset podem vazar dentro do navegador, do servidor e da URL. O objetivo é chocar o aluno com os riscos reais, para depois corrigir tudo nos vídeos seguintes.
+
+**[PROBLEMA]**
+
+No fluxo atual:
+- O token de reset aparece inteiro na URL
+- Ele fica salvo no histórico do navegador
+- Ele aparece em DevTools → Network
+- Ele aparece em logs do servidor
+- Ele não expira
+- Ele pode ser usado infinitas vezes
+
+**Ou seja:** se alguém vê esse token uma vez → controla a conta da vítima para sempre.
 
 **Conteúdo:**
 
-1. **Explorar implementação vulnerável (3 min)**
+1. **Demonstração verbal + tela (9 min)**
 
-   - Abrir `src/actions/passwordReset.js`
-   - Mostrar: token base64url customizado (não usa Supabase Auth)
-   - Token em query param `?token=...` (não em hash)
-   - Sem expiração, sem one-time use
-   - Usa Service Role Key diretamente
+   - Abrir `/forgot-password` e solicitar reset
+   - Ver a URL: `/reset-password?token=abc123`
+   - Mostrar que isso cai no histórico do navegador
+   - Abrir DevTools → Network → ver token exposto
+   - Mostrar logs do servidor: `token: "abc123"`
+   - Reutilizar token várias vezes → continua funcionando
+   - Abrir aba anônima, colar URL → funciona
 
-2. **Demonstrar todos os vazamentos (6 min)**
+2. **Análise dos problemas (3 min)**
+   - Token na URL → entra em logs, analytics, Referer header
+   - Token sem criptografia → qualquer um decodifica base64
+   - Token sem expiração → válido para sempre
+   - Token reutilizável → atacante usa infinitas vezes
+   - Usa Service Role Key → não é o padrão Supabase Auth
 
-   - Solicitar reset em `/forgot-password`
-   - Ver `debugToken` e `debugUrl` no response
-   - Abrir URL: `/reset-password?token=eyJ...`
-   - Página mostra token decodificado visualmente
-   - Abrir DevTools → Console: ver logs
-   - Copiar URL, usar em aba anônima → funciona
-   - Usar mesma URL 2x → funciona (sem one-time use)
-   - Abrir `logs/combined.log` → token exposto
+**[SOLUÇÃO]**
 
-3. **Explicar cada vulnerabilidade (3 min)**
-   - Token na URL → vaza em logs, analytics, Referer
-   - Base64 não é criptografia (qualquer um decodifica)
-   - Sem expiração → válido para sempre
-   - Reutilizável → atacante usa múltiplas vezes
-   - Service Role Key → não é o padrão Supabase
+Não implementamos aqui — apenas mostramos que está tudo quebrado. O objetivo é preparar terreno para os próximos vídeos, onde corrigimos tudo.
 
-**Modificações de Código:** ❌ Nenhum (apenas demonstração)
+**[TEORIA]**
+
+- Tokens expostos entram em: **OWASP Top 10: Sensitive Data Exposure** e **OWASP: Broken Authentication**
+- Tokens são equivalentes a senhas. **Vazou → perdeu.**
+- **Métrica:** "Nenhum token sensível pode aparecer na URL, nos logs ou no histórico."
+
+**Modificações de Código:** ❌ Nenhuma (apenas demonstração)
 
 **Arquivos explorados:**
 
@@ -616,118 +633,188 @@ export async function DeletePostButton({ postId }) {
 - `src/app/reset-password/page.js` - Página com vulnerabilidades visíveis
 - `src/components/ForgotPassword/index.jsx` - Componente vulnerável
 
-**Código Vulnerável (já existe):**
-
-```javascript
-// src/actions/passwordReset.js (⚠️ VULNERÁVEL)
-export async function requestPasswordReset(email) {
-  // ⚠️ Token base64url (não é criptografia)
-  const tokenData = JSON.stringify({ email, timestamp: Date.now() });
-  const token = Buffer.from(tokenData).toString("base64url");
-
-  // ⚠️ Token em query param (vaza em logs)
-  const resetUrl = `http://localhost:3000/reset-password?token=${token}`;
-
-  // ⚠️ Retorna token para debug (NUNCA fazer em produção)
-  return {
-    success: true,
-    debugToken: token,
-    debugUrl: resetUrl,
-  };
-}
-
-export async function resetPassword(token, newPassword) {
-  // ⚠️ Decodifica token da URL
-  const tokenData = JSON.parse(
-    Buffer.from(token, "base64url").toString("utf-8")
-  );
-
-  // ⚠️ Usa Service Role Key (não é o padrão)
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-  // ⚠️ Sem verificação de expiração
-  // ⚠️ Sem verificação de one-time use
-  await supabaseAdmin.auth.admin.updateUserById(user.id, {
-    password: newPassword,
-  });
-}
-```
-
-**Demonstração visual na página:**
-
-```javascript
-// src/app/reset-password/page.js
-// ✅ Página mostra as vulnerabilidades
-<div className={styles.tokenDebug}>
-  <strong>🔓 Token na URL (visível):</strong>
-  <code>{token.substring(0, 32)}...</code>
-
-  <strong>👤 Email decodificado do token:</strong>
-  <code style={{ background: "#ff4444" }}>
-    {decodedEmail}
-  </code>
-
-  <p>⚠️ Qualquer pessoa pode decodificar base64url!</p>
-</div>
-
-<div className={styles.vulnerabilityInfo}>
-  <h3>🔍 Vulnerabilidades:</h3>
-  <ul>
-    <li>✗ Token visível na URL</li>
-    <li>✗ Token contém email em base64url</li>
-    <li>✗ Sem verificação de expiração</li>
-    <li>✗ Token pode ser reutilizado infinitamente</li>
-  </ul>
-</div>
-```
-
 ---
 
-#### 🎥 Vídeo 2.2: Migrar para Supabase Auth Nativo (14 min)
+#### 🎥 Vídeo 2.2: Migrando para Supabase Auth Nativo - Parte 1 (ForgotPassword) (10 min)
 
-**Commit:** `video-2.2-supabase-auth-nativo`
+**Commit:** `video-2.2-forgot-password-supabase`
+
+**[CONTEXTO]**
+
+No vídeo anterior, vimos que nosso fluxo customizado de Reset Password tinha vários problemas graves: token na URL, sem expiração, reutilizável infinitas vezes, código difícil de manter. Estávamos reinventando um processo crítico, quando já existe uma solução muito mais segura — o Supabase Auth.
+
+Neste vídeo, vamos começar a migração para o fluxo nativo do Supabase, que já inclui segurança de nível profissional sem escrever praticamente nenhuma linha de código manual.
+
+**[PROBLEMA]**
+
+Criar um sistema de recuperação de senha manual significa:
+- Gerenciar tokens
+- Gerenciar expiração
+- Armazenar hashes
+- Invalidar token após uso
+- Validar token na hora de redefinir
+- Não expor tokens em logs ou URLs
+- Evitar race conditions
+
+Isso é difícil, demorado e arriscado. É por isso que a recomendação profissional é **não implementar reset password manualmente**, e sim usar um provedor confiável.
+
+**[SOLUÇÃO]**
+
+A solução é migrar totalmente para o Supabase Auth, que já implementa:
+- Token JWT seguro
+- Expiração automática (1h)
+- Uso único integrado (one-time use)
+- Token no hash da URL (#) → não aparece em histórico nem logs
+- Validação automática dentro do Supabase
+- Envio do email (com SMTP real, se configurado)
+
+Nenhum código de geração/armazenamento/validação de token é necessário.
 
 **Conteúdo:**
 
-1. **Por que usar Supabase Auth nativo (3 min)**
-
-   - Não reinventar a roda
-   - Token seguro (JWT gerenciado)
-   - Expiração automática (1 hora)
-   - One-time use built-in
-   - Token no hash (#) da URL (não em query param)
-   - Email real (SMTP configurado no Supabase)
-
-2. **Migrar ForgotPassword (4 min)**
+1. **Migrar o componente ForgotPassword (7 min)**
 
    - Modificar `src/components/ForgotPassword/index.jsx`
    - Trocar implementação customizada por `resetPasswordForEmail()`
    - Configurar `redirectTo` para sua app
    - Remover `debugToken` e `debugUrl`
 
-3. **Migrar ResetPassword (5 min)**
+2. **Explicação verbal (3 min)**
 
-   - Modificar `src/app/reset-password/page.js`
-   - Remover decodificação manual
-   - Usar `supabase.auth.updateUser()`
-   - Supabase pega token do hash automaticamente
-   - Remover avisos de vulnerabilidade
+   - Não precisamos gerar token
+   - Não precisamos salvar nada no banco
+   - Não precisamos implementar expiração
+   - Supabase envia o email com o token seguro no hash da URL
 
-4. **Deletar código vulnerável (2 min)**
-   - Deletar `src/actions/passwordReset.js`
-   - Testar fluxo completo
-   - Tentar reusar token → Falha ✅
-   - Esperar expiração → Falha ✅
+**[TEORIA]**
+
+Esse fluxo funciona como OAuth:
+- Gera token
+- Valida token
+- Consome token
+- Invalida token
+
+**Métrica:** Um token só pode ser usado 1 única vez.
 
 **Modificações de Código:** ✅ Sim
-
-**Arquivos criados:**
-
-- ❌ Nenhum (usa Supabase Auth built-in)
 
 **Arquivos modificados:**
 
 - `src/components/ForgotPassword/index.jsx` - Usar `resetPasswordForEmail()`
+
+**Código SEGURO (implementar):**
+
+```javascript
+// src/components/ForgotPassword/index.jsx (MODIFICAR)
+'use client'
+import { createClient } from '@/utils/supabase/client'
+
+export const ForgotPassword = () => {
+  const supabase = createClient()
+  const [email, setEmail] = useState('')
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    
+    // ✅ USAR SUPABASE AUTH NATIVO
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`
+    })
+    
+    if (error) {
+      setErrorMessage(error.message)
+    } else {
+      setSuccessMessage('✅ Email enviado! Verifique sua caixa de entrada.')
+    }
+  }
+  
+  return (
+    <form onSubmit={handleSubmit}>
+      <Input 
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <Button type="submit">Enviar Email</Button>
+    </form>
+  )
+}
+```
+
+---
+
+#### 🎥 Vídeo 2.3: Migrando para Supabase Auth Nativo - Parte 2 (ResetPassword + Limpeza) (12 min)
+
+**Commit:** `video-2.3-reset-password-supabase`
+
+**[CONTEXTO]**
+
+No vídeo anterior, nós migramos a primeira parte do fluxo — o ForgotPassword — para o Supabase. Agora vamos concluir a migração:
+- Implementar a página reset-password usando o fluxo automático
+- Remover toda a lógica vulnerável antiga
+- Validar que expiração e one-time use funcionam
+
+**[PROBLEMA]**
+
+Nosso fluxo manual anterior exigia:
+- Pegar token da URL
+- Validar token manualmente
+- Verificar expiração
+- Verificar se já foi usado
+- Atualizar hash no banco
+- Lidar com erros de reuso
+- Evitar race conditions
+
+Com o uso nativo das funcionalidades do Supabase, nada disso é necessário.
+
+**[SOLUÇÃO]**
+
+**Conteúdo:**
+
+1. **Migrar ResetPassword (5 min)**
+
+   - Modificar `src/app/reset-password/page.js`
+   - Remover decodificação manual
+   - Usar `supabase.auth.updateUser({ password })`
+   - Supabase pega token do hash automaticamente
+
+2. **Explicação verbal (2 min)**
+
+   - Não pegamos token da URL
+   - Não validamos token manualmente
+   - Não lidamos com expiração
+   - Não lidamos com one-time use
+   - Tudo isso já é feito pelo Supabase automaticamente
+
+3. **Deletar código vulnerável (2 min)**
+
+   - Deletar `src/actions/passwordReset.js`
+   - Deletar helpers antigos
+   - Remover warnings de segurança
+
+4. **Teste ao vivo (3 min)**
+
+   - Testar fluxo completo
+   - Tentar reusar link → falha ✅
+   - Esperar expiração → falha ✅
+
+**[TEORIA]**
+
+O fluxo segue a mesma estrutura de um processo auditado OWASP:
+- Gera token
+- Valida assinatura
+- Valida expiração
+- Consome uma vez
+- Invalida automaticamente
+
+**Métrica de segurança:**
+- Nenhum token pode ser usado duas vezes
+- Nenhum token deve aparecer em logs ou histórico
+
+**Modificações de Código:** ✅ Sim
+
+**Arquivos modificados:**
+
 - `src/app/reset-password/page.js` - Usar `updateUser()`
 
 **Arquivos deletados:**
@@ -737,77 +824,37 @@ export async function resetPassword(token, newPassword) {
 **Código SEGURO (implementar):**
 
 ```javascript
-// src/components/ForgotPassword/index.jsx (MODIFICAR)
-"use client";
-import { createClient } from "@/utils/supabase/client";
-
-export const ForgotPassword = () => {
-  const supabase = createClient();
-  const [email, setEmail] = useState("");
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // ✅ USAR SUPABASE AUTH NATIVO
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) {
-      setErrorMessage(error.message);
-    } else {
-      setSuccessMessage("✅ Email enviado! Verifique sua caixa de entrada.");
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <Input
-        label="Email"
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <Button type="submit">Enviar Email</Button>
-    </form>
-  );
-};
-```
-
-```javascript
 // src/app/reset-password/page.js (MODIFICAR)
-"use client";
-import { createClient } from "@/utils/supabase/client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+'use client'
+import { createClient } from '@/utils/supabase/client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function ResetPasswordPage() {
-  const supabase = createClient();
-  const router = useRouter();
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-
+  const supabase = createClient()
+  const router = useRouter()
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  
   const handleSubmit = async (e) => {
-    e.preventDefault();
-
+    e.preventDefault()
+    
     if (password !== confirmPassword) {
-      setErrorMessage("As senhas não coincidem");
-      return;
+      setErrorMessage('As senhas não coincidem')
+      return
     }
-
+    
     // ✅ Supabase pega token do hash (#) automaticamente
-    const { error } = await supabase.auth.updateUser({
-      password: password,
-    });
-
+    const { error } = await supabase.auth.updateUser({ password })
+    
     if (error) {
-      setErrorMessage("Token inválido ou expirado");
+      setErrorMessage('Token inválido ou expirado')
     } else {
-      setSuccessMessage("✅ Senha alterada com sucesso!");
-      setTimeout(() => router.push("/login"), 2000);
+      setSuccessMessage('Senha alterada com sucesso!')
+      setTimeout(() => router.push('/login'), 2000)
     }
-  };
-
+  }
+  
   return (
     <form onSubmit={handleSubmit}>
       <Input
@@ -824,120 +871,219 @@ export default function ResetPasswordPage() {
       />
       <Button type="submit">Redefinir Senha</Button>
     </form>
-  );
+  )
 }
 ```
 
-**Como funciona (Supabase Auth):**
-
-```
-1. Usuário preenche email → resetPasswordForEmail()
-
-2. Supabase:
-   - Gera token JWT seguro
-   - Envia email com link: https://yourapp.com/reset-password#access_token=eyJ...&type=recovery
-   - Token expira em 1 hora
-
-3. Usuário clica no link → redireciona para /reset-password
-
-4. Página chama updateUser({ password })
-
-5. Supabase:
-   - Valida token automaticamente
-   - Verifica expiração
-   - Marca token como usado
-   - Troca a senha
-```
-
 ---
 
-#### 🎥 Vídeo 2.3: Entendendo OAuth 2.0 e PKCE (12 min)
+#### 🎥 Vídeo 2.4: OAuth 2.0 e PKCE - Entendendo o Fluxo (13 min)
 
-**Commit:** `video-2.3-oauth-flow`
+**Commit:** `video-2.4-oauth-flow`
 
-**Conteúdo:**
+**[CONTEXTO]**
 
-1. **O que é OAuth 2.0 (4 min)**
+Antes de implementar refresh tokens ou token rotation, precisamos entender como funciona o processo de autenticação OAuth que o Supabase executa "por trás dos panos". Este vídeo serve como base para todo o restante do módulo: você aprende como o fluxo funciona, onde ele quebra, e por que Supabase usa PKCE e state corretamente.
 
-   - Padrão da indústria para autenticação
-   - Authorization Code Flow (mais seguro)
-   - Por que não usar Resource Owner Password Credentials
-   - Como Supabase implementa OAuth
+**[PROBLEMA]**
 
-2. **PKCE - Proof Key for Code Exchange (4 min)**
+A maioria dos problemas graves de OAuth acontece porque o fluxo é implementado pela metade:
+- Ausência de PKCE → permite interceptação do authorization code
+- Ausência de state → permite CSRF no login
+- Redirect URI permissivo → session fixation
+- Tokens aparecendo na URL (implicit flow)
 
-   - Por que PKCE existe (proteção contra interceptação)
-   - Code Verifier + Code Challenge
-   - SHA-256 hash
-   - Supabase usa PKCE automaticamente
+E o pior: tudo isso funciona aparentemente bem, então muitos devs acham que está "seguro".
 
-3. **Analisar código existente (4 min)**
-   - Abrir `src/utils/supabase/middleware.js`
-   - Ver refresh token automático
-   - Ver cookies httpOnly
-   - Mostrar que não precisa implementar manualmente
+**[SOLUÇÃO]**
 
-**Modificações de Código:** ❌ Nenhum (apenas teoria)
+Apresentar o fluxo OAuth moderno em slides curtos, explicando APENAS o necessário para seguir o curso e entendendo como o Supabase implementa segurança automaticamente.
+
+**Conteúdo (13 min de slides + demonstração):**
+
+**SLIDE 1 — O que vamos revisar:**
+- Authorization Code Flow
+- PKCE
+- State
+- Como o Supabase garante segurança no fluxo
+- Por que isso importa para o módulo de tokens
+
+**SLIDE 2 — Onde OAuth falha na prática:**
+- Falta de PKCE
+- Falha em validar state
+- Redirect URI genérico
+- Troca de código insegura
+- Fluxo implícito (tokens na URL)
+
+**SLIDE 3 — Authorization Code Flow (resumo rápido):**
+- App → redireciona usuário
+- Usuário autentica no provedor
+- Provedor retorna authorization code
+- Código é trocado por tokens no servidor
+- "Nenhum token sensível trafega pela URL. Esse já é um diferencial desse fluxo."
+
+**SLIDE 4 — PKCE (segurança contra interceptação):**
+- Client gera code_verifier
+- Envia apenas o code_challenge
+- Servidor compara challenge + verifier
+- Impede uso de um code roubado por interceptação
+- "PKCE é o que impede que alguém capture o authorization code e logue como você."
+
+**SLIDE 5 — State (proteção contra CSRF):**
+- Valor aleatório enviado no início do login
+- Deve voltar igual no callback
+- Se não bater → rejeitar
+- Previne CSRF em OAuth
+- "Sem state, qualquer página pode iniciar um login OAuth em seu nome."
+
+**SLIDE 6 — O que o Supabase já faz por você:**
+- Usa Authorization Code Flow por padrão
+- PKCE ativado automaticamente
+- State ativado automaticamente
+- Validação rígida de redirect URI
+- Troca de código feita no backend do Supabase
+- Cookies HttpOnly + Secure em produção
+- "Essa é a razão pela qual a autenticação do Supabase é segura mesmo sem escrever uma linha de código."
+
+**SLIDE 7 — O que ainda é sua responsabilidade:**
+- Armazenamento seguro dos tokens
+- Ciclo de vida do refresh token
+- Token rotation
+- Detecção e revogação de reuso
+- Security logs
+- Fingerprinting de dispositivos (opcional)
+- "É isso que vamos construir no próximo vídeo e ao longo do módulo."
+
+**[TEORIA]**
+
+PKCE impede interceptação de authorization code. State previne CSRF. Trade-offs: complexidade maior, mas segurança significativamente superior. **Métrica:** validar que o servidor troca código apenas com challenge válido.
+
+**Modificações de Código:** ❌ Nenhuma (apenas teoria com slides)
 
 **Arquivos explorados:**
 
-- `src/utils/supabase/middleware.js` - Refresh automático
-- `src/utils/supabase/server.js` - Server client
-- `src/utils/supabase/client.js` - Browser client
+- `src/utils/supabase/middleware.js` - Ver como Supabase gerencia tokens
+- `src/utils/supabase/client.js` - Ver configuração PKCE
 
 ---
 
-#### 🎥 Vídeo 2.4: Refresh Token Security (15 min)
+#### 🎥 Vídeo 2.5: Refresh Token Security (20 min)
 
-**Commit:** `video-2.4-refresh-token`
+**Commit:** `video-2.5-refresh-token-security`
+
+**[CONTEXTO]**
+
+Agora que entendemos o fluxo OAuth inicial, precisamos proteger a parte mais sensível da sessão: refresh tokens. O Supabase usa refresh tokens para manter o usuário logado, mas para ficar seguro precisamos entender como eles funcionam e habilitar mecanismos adicionais como token rotation e detecção de reuso.
+
+**[PROBLEMA]**
+
+Se um refresh token vazar, o invasor gera tokens ilimitados. Sem token rotation, o servidor não detecta reuso.
+
+**[SOLUÇÃO]**
+
+A solução profissional é usar duas proteções combinadas:
+
+1. **Token Rotation:** A cada uso do refresh token, o servidor gera um novo e invalida o anterior
+   - Refresh token vira single-use
+   - Se alguém tentar usar o antigo, é sinal de vazamento
+
+2. **Detecção de Reuso:** Se um refresh token inválido aparecer:
+   - Isso significa que alguém copiou o token
+   - Precisamos revogar todas as sessões do usuário
+   - Deixar logs explícitos do incidente
+   - Impedir qualquer renovação até um login real
 
 **Conteúdo:**
 
-1. **Como Refresh Tokens funcionam (5 min)**
+1. **Demonstração no Código (10 min)**
 
-   - Access Token (curto prazo: 1h)
-   - Refresh Token (longo prazo: 30 dias)
-   - Por que não fazer access token durar muito
-   - Token Rotation: novo refresh token a cada uso
+   - Criar `src/lib/tokenSecurity.js`
+   - Implementar `detectTokenReuse()`
+   - Modificar `src/utils/supabase/middleware.js`
+   - Modificar `src/eventLogger.js`
 
-2. **Supabase Token Rotation (5 min)**
+2. **Testar ao vivo (5 min)**
 
-   - Analisar `src/utils/supabase/middleware.js`
-   - Ver `getUser()` → atualiza tokens automaticamente
-   - httpOnly cookies (não acessível via JavaScript)
-   - Secure flag em produção
+   - Fazer login normal
+   - Renovar token → funciona
+   - Reutilizar o mesmo refresh token manualmente
+   - Middleware detecta → bloqueia sessão
+   - Log aparece: "TOKEN_REUSE_DETECTED"
+   - Requer novo login
 
-3. **Adicionar logs de segurança (5 min)**
-   - Detectar quando refresh token expira
-   - Logar eventos de token rotation
-   - Monitorar tentativas de reuso
+3. **Explicação teórica (5 min)**
 
-**Modificações de Código:** ✅ Sim (apenas logs)
+   - Por que essa abordagem é a recomendada
+   - Refresh tokens são a "chave-mestra" da sessão
+   - Rotation reduz a janela de ataque
+   - Reuso é prova matemática de que o token foi copiado
+   - É o mecanismo usado por Google, Auth0, Supabase e Microsoft
+
+**[TEORIA]**
+
+**Defesa em profundidade:**
+- Cada refresh token = descartável
+- Tentar reaproveitar = evidência de ataque
+- Resposta automática = segurança real
+
+**Métrica de sucesso:** Nenhum refresh token no sistema pode ser usado duas vezes.
+
+**Modificações de Código:** ✅ Sim
+
+**Arquivos criados:**
+
+- `src/lib/tokenSecurity.js` - Detecção de reuso
 
 **Arquivos modificados:**
 
-- `src/utils/supabase/middleware.js` - Adicionar logs
-- `src/eventLogger.js` - Novo tipo de evento
+- `src/utils/supabase/middleware.js` - Interceptar refresh e detectar reuso
+- `src/eventLogger.js` - Adicionar eventos de segurança
 
-**Código a adicionar:**
+**Código a implementar:**
 
 ```javascript
-// src/utils/supabase/middleware.js (ADICIONAR logs)
+// src/lib/tokenSecurity.js (CRIAR)
+export async function detectTokenReuse(userId, tokenId) {
+  const usedToken = await database.checkUsedToken(tokenId);
+
+  if (usedToken) {
+    logSecurityEvent({
+      type: "TOKEN_REUSE_DETECTED",
+      userId,
+      severity: "CRITICAL",
+    });
+    await revokeAllUserTokens(userId);
+    return true;
+  }
+
+  await database.markTokenAsUsed(tokenId);
+  return false;
+}
+```
+
+```javascript
+// src/utils/supabase/middleware.js (MODIFICAR)
 export async function updateSession(request) {
   let supabaseResponse = NextResponse.next({ request });
   const supabase = createServerClient(/*...*/);
 
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
 
   // ✅ Adicionar log quando refresh token expira
-  if (error?.code === "refresh_token_not_found") {
+  if (error?.code === 'refresh_token_not_found') {
     logSecurityEvent({
-      type: "REFRESH_TOKEN_EXPIRED",
+      type: 'REFRESH_TOKEN_EXPIRED',
       userId: user?.id,
-      severity: "WARNING",
+      severity: 'WARNING'
+    });
+  }
+
+  // ✅ Log de token rotation (quando tokens são atualizados)
+  if (user) {
+    logEvent({
+      step: 'AUTH',
+      operation: 'TOKEN_REFRESH',
+      userId: user.id
     });
   }
 
@@ -1435,14 +1581,16 @@ MÓDULO 1: Fundamentos e Proteção (52 min, 7 vídeos)
       ├─ 1.6: CSRF Parte 1 - Ataque (12 min)
       └─ 1.7: CSRF Parte 2 - Proteção (13 min)
 
-MÓDULO 2: OAuth e Tokens (53 min, 4 vídeos)
-  ├─ Reset Password (2 vídeos)
-  │  ├─ 2.1: Reset Password Inseguro - Demo (12 min)
-  │  └─ 2.2: Migrar para Supabase Auth (14 min)
+MÓDULO 2: OAuth e Tokens (67 min, 5 vídeos)
+  ├─ Token Leaks (1 vídeo)
+  │  └─ 2.1: Tokens Inseguros - Demonstração (12 min)
+  ├─ Reset Password Seguro (2 vídeos)
+  │  ├─ 2.2: Migrar ForgotPassword (10 min)
+  │  └─ 2.3: Migrar ResetPassword + Limpeza (12 min)
   ├─ OAuth (1 vídeo)
-  │  └─ 2.3: OAuth 2.0 e PKCE (12 min)
+  │  └─ 2.4: OAuth 2.0 e PKCE (13 min)
   └─ Refresh Token (1 vídeo)
-      └─ 2.4: Refresh Token Security (15 min)
+      └─ 2.5: Refresh Token Security (20 min)
 
 MÓDULO 3: RBAC e ABAC (52 min, 4 vídeos) ⭐ SIMPLIFICADO
   ├─ Introdução (1 vídeo)
@@ -1469,11 +1617,11 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 ## 📈 Métricas do Curso
 
 - **Total de Módulos**: 5
-- **Total de Vídeos**: 25
-- **Duração Total**: ~3h 57min
-- **Commits Esperados**: ~19 (com código)
-- **Arquivos Novos**: ~35+
-- **Arquivos Modificados**: ~20+
+- **Total de Vídeos**: 26
+- **Duração Total**: ~4h 11min
+- **Commits Esperados**: ~20 (com código)
+- **Arquivos Novos**: ~36+
+- **Arquivos Modificados**: ~21+
 - **Arquivos Deletados**: 1 (passwordReset.js)
 
 ---
@@ -1483,16 +1631,19 @@ MÓDULO 5: Deploy e Produção (50 min, 6 vídeos)
 ### ✅ Proteção contra XSS, CSRF e vazamento de tokens
 
 - **Módulo 1**: XSS e CSRF (4 vídeos: 1.4 a 1.7)
-- **Módulo 2**: Vazamento de tokens via reset password (2 vídeos: 2.1 e 2.2)
+- **Módulo 2**: Vazamento de tokens (3 vídeos: 2.1, 2.2 e 2.3)
+  - 2.1: Demonstração de tokens inseguros
+  - 2.2 e 2.3: Migração para Supabase Auth nativo
 - Implementação prática de todas as proteções
 
 ### ✅ OAuth e fluxos com refresh token seguro
 
 - **Módulo 2**: 100% focado neste tópico
-- 4 vídeos dedicados (2.1 a 2.4)
-- Reset password seguro (demonstração + correção)
-- OAuth 2.0 e PKCE
-- Refresh token rotation e detecção de reuso
+- 5 vídeos dedicados (2.1 a 2.5)
+- Tokens inseguros: demonstração real (2.1)
+- Reset password seguro com Supabase Auth (2.2 e 2.3)
+- OAuth 2.0 e PKCE (2.4)
+- Refresh token rotation e detecção de reuso (2.5)
 
 ### ✅ Autorização baseada em papéis (RBAC) e atributos (ABAC)
 
