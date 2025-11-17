@@ -2638,235 +2638,221 @@ Defesa em profundidade:
 
 ---
 
-### **MÓDULO 5: Deploy Seguro e Boas Práticas (48 min, 5 vídeos)**
+### **MÓDULO 5: Pipeline de Segurança e Deploy (42 min, 4 vídeos)**
 
-#### 🎥 Vídeo 5.1: Checklist de Segurança + npm audit (12 min)
+#### 🎥 Vídeo 5.1: Dependabot - Monitoramento Automático (10 min)
 
-**Commit:** `video-5.1-checklist-audit`
-
-**[CONTEXTO]**
-
-Antes de fazer deploy em produção, é fundamental fazer uma **auditoria completa de segurança**. Este vídeo ensina a usar `npm audit` para detectar vulnerabilidades em dependências, criar um checklist de segurança, e preparar variáveis de ambiente para produção.
-
-**[PROBLEMA]**
-
-Aplicações em produção frequentemente têm:
-
-- Dependências com vulnerabilidades conhecidas (CVEs)
-- Variáveis de ambiente expostas no código
-- Secrets commitados no Git
-- Build sem otimizações de segurança
-
-**[SOLUÇÃO]**
-
-1. **Rodar npm audit** e corrigir vulnerabilidades críticas
-2. **Criar checklist de segurança** pré-deploy
-3. **Configurar variáveis de ambiente** para produção
-4. **Limpar código** de secrets e debug info
-
-**Conteúdo:**
-
-1. **npm audit e correção (5 min)**
-
-   - Rodar `npm audit` e entender report
-   - Corrigir vulnerabilidades: `npm audit fix`
-   - Revisar breaking changes
-   - Quando ignorar vulnerabilidades (justificar)
-
-2. **Criar checklist de segurança (4 min)**
-
-   - Criar `SECURITY_CHECKLIST.md`
-   - Itens essenciais: CORS, CSP, HSTS, RBAC, sanitização
-   - Verificar cada item antes de deploy
-
-3. **Preparar para produção (3 min)**
-
-   - Criar `.env.production.example`
-   - Atualizar `.gitignore`
-   - Remover console.logs
-   - Verificar que nenhum secret está no código
-
-**Modificações de Código:** ✅ Sim
-
-**Arquivos criados:**
-
-- `SECURITY_CHECKLIST.md` - Checklist pré-deploy
-- `.env.production.example` - Template de env vars
-
-**Arquivos modificados:**
-
-- `.gitignore` - Garantir secrets não commitados
-- `package.json` - Scripts de audit
-
----
-
-#### 🎥 Vídeo 5.2: Dependabot - Atualizações Automáticas (10 min)
-
-**Commit:** `video-5.2-dependabot`
+**Commit:** `video-5.1-dependabot`
 
 **[CONTEXTO]**
 
-Vulnerabilidades em dependências são descobertas constantemente. **Dependabot** monitora automaticamente suas dependências e cria Pull Requests para atualizá-las quando vulnerabilidades são encontradas. É essencial para manter a aplicação segura em produção.
+**Dependabot** é o primeiro passo da nossa pipeline de segurança. Ele monitora vulnerabilidades em dependências (npm packages) e cria Pull Requests automáticos para atualizá-las. Vamos configurá-lo para ser o "alarme" que detecta problemas antes de chegarem em produção.
 
 **[PROBLEMA]**
 
-Sem automação:
+Sem monitoramento automático:
 
 - Vulnerabilidades ficam sem correção por meses
-- Difícil acompanhar updates de todas as deps
 - Equipe não é notificada de CVEs críticos
+- npm audit manual é esquecido
 
 **[SOLUÇÃO]**
 
 Configurar Dependabot para:
 
-1. Monitorar vulnerabilidades em dependências
-2. Criar PRs automáticos com updates
-3. Priorizar updates de segurança
+1. **Monitorar vulnerabilidades** (GitHub Security Advisories)
+2. **Criar PRs automáticos** com security updates
+3. **Priorizar critical/high** vulnerabilities
 
 **Conteúdo:**
 
 1. **Entender Dependabot (3 min)**
 
-   - O que é e como funciona
-   - GitHub Security Advisories
-   - Diferença entre security updates e version updates
+   - O que é GitHub Security Advisories
+   - Como Dependabot detecta vulnerabilidades (CVEs)
+   - Diferença: security updates vs version updates
 
 2. **Configurar dependabot.yml (4 min)**
 
    - Criar `.github/dependabot.yml`
-   - Configurar para npm
-   - Schedule: daily, weekly
-   - Labels e reviewers
+   - `package-ecosystem: npm`
+   - Schedule: `daily` para security
+   - Labels automáticos
 
-3. **Testar e gerenciar PRs (3 min)**
+3. **Ver PRs do Dependabot (3 min)**
 
-   - Ver PRs criados pelo Dependabot
-   - Como revisar e aprovar
-   - Estratégia de merge
+   - Demonstrar PR criado automaticamente
+   - Ver CVE details e severity
+   - Aprovar e merge
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `.github/dependabot.yml` - Configuração Dependabot
+- `.github/dependabot.yml`
+
+**Código:**
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily" # Checa vulnerabilidades diariamente
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "security"
+```
 
 ---
 
-#### 🎥 Vídeo 5.3: GitHub Actions - Security Workflow (12 min)
+#### 🎥 Vídeo 5.2: GitHub Actions - npm audit Pipeline (14 min)
 
-**Commit:** `video-5.3-github-actions`
+**Commit:** `video-5.2-github-actions`
 
 **[CONTEXTO]**
 
-**GitHub Actions** permite automatizar verificações de segurança em cada Pull Request e commit. Vamos criar um workflow que roda `npm audit`, verifica linter de segurança, e bloqueia merge se houver vulnerabilidades críticas.
+**GitHub Actions** é o segundo passo da pipeline. Enquanto Dependabot monitora continuamente, o workflow de CI/CD garante que **nenhum PR** pode ser aprovado se houver vulnerabilidades críticas. Vamos criar um workflow que roda `npm audit` automaticamente e bloqueia merge se necessário.
 
 **[PROBLEMA]**
 
 Sem CI/CD de segurança:
 
 - Vulnerabilidades chegam em produção
-- Code review não pega problemas de segurança
-- Sem processo padronizado de verificação
+- npm audit é ignorado no review
+- Sem validação automática de PRs
 
 **[SOLUÇÃO]**
 
 Criar workflow que:
 
-1. Roda npm audit em cada PR
-2. Bloqueia merge se houver vulnerabilidades críticas
-3. Verifica headers de segurança (opcional)
+1. **Roda npm audit** em cada PR
+2. **Bloqueia merge** se critical/high vulnerabilities
+3. **Protege branch main** (require passing checks)
 
 **Conteúdo:**
 
-1. **Criar workflow de segurança (5 min)**
+1. **Criar security.yml (6 min)**
 
    - Criar `.github/workflows/security.yml`
-   - Job: npm audit
-   - Job: linter
-   - Fail se vulnerabilidades críticas
+   - Job: `npm audit --audit-level=high`
+   - Trigger: `pull_request` e `push` na main
+   - Fail se vulnerabilidades high+
 
-2. **Configurar proteção de branch (3 min)**
+2. **Configurar branch protection (4 min)**
 
-   - Require checks to pass
-   - Status checks: security workflow
-   - Bloquear merge se falhar
+   - GitHub Settings → Branches → main
+   - Require status checks: ✅ security workflow
+   - Demonstrar que merge fica bloqueado
 
-3. **Testar workflow (4 min)**
+3. **Testar pipeline (4 min)**
 
    - Criar PR de teste
-   - Ver workflow rodar
-   - Simular falha (dep vulnerável)
-   - Ver bloqueio de merge
+   - Ver workflow rodar no Actions
+   - Simular falha (adicionar dep vulnerável)
+   - Ver bloqueio de merge ❌
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `.github/workflows/security.yml` - Workflow de segurança
+- `.github/workflows/security.yml`
+
+**Código:**
+
+```yaml
+# .github/workflows/security.yml
+name: Security Audit
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        # Falha se encontrar vulnerabilidades high ou critical
+```
 
 ---
 
-#### 🎥 Vídeo 5.4: Deploy na Vercel + Monitoramento (10 min)
+#### 🎥 Vídeo 5.3: Deploy Seguro na Vercel (10 min)
 
-**Commit:** `video-5.4-deploy-monitoring`
+**Commit:** `video-5.3-deploy-vercel`
 
 **[CONTEXTO]**
 
-Fazer deploy na **Vercel** com configurações seguras: variáveis de ambiente protegidas, HTTPS forçado, e monitoramento de logs de segurança.
+Com a pipeline configurada (Dependabot + GitHub Actions), agora fazemos o deploy na **Vercel** com configurações seguras. Vamos validar que todas as proteções implementadas (CORS, CSP, HSTS, etc) estão funcionando em produção.
 
 **[PROBLEMA]**
 
 Deploy inseguro:
 
-- Env vars expostas
-- HTTP sem HTTPS
-- Sem logs de eventos de segurança
-- Sem alertas de problemas
+- Env vars commitadas ou expostas
+- Security headers não funcionam em produção
+- Sem validação pós-deploy
 
 **[SOLUÇÃO]**
 
-1. Deploy seguro na Vercel
-2. Configurar env vars
-3. Monitorar logs de segurança
+1. **Deploy seguro** com env vars protegidas
+2. **Verificar security headers** em produção
+3. **Monitorar logs** de segurança
 
 **Conteúdo:**
 
-1. **Configurar deploy (4 min)**
+1. **Configurar deploy na Vercel (4 min)**
 
-   - Criar projeto na Vercel
-   - Adicionar env vars (não commitar!)
-   - Configurar domínio
-   - Testar deployment
+   - Criar projeto na Vercel (link com GitHub)
+   - Adicionar env vars no Vercel (não commitar!)
+   - Deploy automático (push → main)
+   - Ver deploy bem-sucedido
 
-2. **Verificar segurança (3 min)**
+2. **Validar security headers (4 min)**
 
-   - HTTPS ativo? ✅
-   - Headers funcionando? (usar securityheaders.com)
-   - CSP bloqueando scripts? ✅
+   - Abrir site em produção
+   - Usar https://securityheaders.com
+   - Verificar: CSP, HSTS, X-Frame-Options, CORS
+   - Ver score A/A+ ✅
 
-3. **Monitoramento básico (3 min)**
+3. **Ver logs de segurança (2 min)**
 
-   - Ver logs na Vercel
-   - Eventos de segurança logados
-   - Setup de alertas (opcional)
+   - Vercel Dashboard → Logs
+   - Ver eventos de autorização
+   - Ver CSP violations (se houver)
 
 **Modificações de Código:** ✅ Sim
 
 **Arquivos criados:**
 
-- `vercel.json` - Configuração Vercel
-- `docs/DEPLOY_GUIDE.md` - Guia de deploy
+- `docs/DEPLOY_GUIDE.md`
 
 **Arquivos modificados:**
 
-- `README.md` - Instruções de deploy
+- `README.md` - Badge de deploy + instruções
 
 ---
 
-#### 🎥 Vídeo 5.5: Conclusão e Recursos (8 min)
+#### 🎥 Vídeo 5.4: Conclusão e Próximos Passos (8 min)
 
-**Commit:** `video-5.5-conclusao`
+**Commit:** `video-5.4-conclusao`
 
 **[CONTEXTO]**
 
@@ -2944,14 +2930,13 @@ MÓDULO 4: CORS e Headers (37 min, 3 vídeos)
   ├─ CORS implementação (1 vídeo)
   └─ CSP + Security Headers (1 vídeo)
 
-MÓDULO 5: Deploy e Produção (48 min, 5 vídeos) ⭐ FOCO EM DETECÇÃO
-  ├─ npm audit + Checklist (1 vídeo)
-  ├─ Dependabot (1 vídeo)
-  ├─ GitHub Actions (1 vídeo)
-  ├─ Deploy + Monitoring (1 vídeo)
-  └─ Conclusão (1 vídeo)
-  
-  💡 Foco em ferramentas de detecção de vulnerabilidades
+MÓDULO 5: Pipeline de Segurança (42 min, 4 vídeos) ⭐ FOCO NA PIPELINE
+  ├─ 5.1: Dependabot (10 min) - Monitoramento automático
+  ├─ 5.2: GitHub Actions (14 min) - npm audit pipeline
+  ├─ 5.3: Deploy Vercel (10 min) - Validação em prod
+  └─ 5.4: Conclusão (8 min) - Review + recursos
+
+  💡 Pipeline completa: Dependabot → Actions → Deploy → Validação
 ```
 
 ---
@@ -2959,19 +2944,20 @@ MÓDULO 5: Deploy e Produção (48 min, 5 vídeos) ⭐ FOCO EM DETECÇÃO
 ## 📈 Métricas do Curso
 
 - **Total de Módulos**: 5
-- **Total de Vídeos**: 24
-- **Duração Total**: ~4h 16min
-- **Commits Esperados**: ~19 (com código)
-- **Arquivos Novos**: ~30+
+- **Total de Vídeos**: 23
+- **Duração Total**: ~4h 10min
+- **Commits Esperados**: ~18 (com código)
+- **Arquivos Novos**: ~25+
 - **Arquivos Modificados**: ~20+
 - **Arquivos Deletados**: 1 (passwordReset.js)
 
 **Distribuição:**
+
 - Módulo 1: 7 vídeos (52 min) - Fundamentos + XSS + CSRF
 - Módulo 2: 5 vídeos (67 min) - OAuth e Tokens
 - Módulo 3: 4 vídeos (52 min) - RBAC e ABAC
 - Módulo 4: 3 vídeos (37 min) - CORS e Headers
-- Módulo 5: 5 vídeos (48 min) - **npm audit, Dependabot, Deploy**
+- Módulo 5: 4 vídeos (42 min) - **Pipeline: Dependabot → Actions → Deploy**
 
 ---
 
@@ -3161,6 +3147,7 @@ Token Binding vincula um token de autenticação a um dispositivo específico us
 **O que é:**
 
 Testes automatizados para validar implementações de segurança:
+
 - **Unit tests**: Testar sanitização (DOMPurify, validação de inputs)
 - **Integration tests**: Testar RBAC/ABAC, fluxos de autenticação
 - **E2E tests**: Simular ataques XSS/CSRF e verificar bloqueio
