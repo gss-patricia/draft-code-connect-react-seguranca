@@ -172,11 +172,11 @@ Ao final do curso, o aluno será capaz de:
    - Inserir `<img src=x onerror="alert('XSS')">`
    - Explicar o perigo real (roubo de tokens, cookies)
 
-**Modificações de Código:** ✅ Sim (apenas documentação)
+**Modificações de Código:** ❌ Nenhum
 
 **Arquivos criados:**
 
-- `docs/XSS_ATTACK_DEMO.md` - Exemplos de payloads XSS testados
+- ❌ Nenhum (apenas demonstração)
 
 **Arquivos modificados:**
 
@@ -354,8 +354,6 @@ Olá! <b>Sou dev</b>
 **Arquivos criados:**
 
 - `src/components/DeletePostButton/index.jsx` - Botão vulnerável
-- `docs/CSRF_ATTACK_DEMO.md` - Página maliciosa
-- `docs/csrf-attack.html` - HTML de ataque (demo)
 
 **Arquivos modificados:**
 
@@ -396,9 +394,11 @@ export function DeletePostButton({ postId }) {
 }
 ```
 
-**Ataque (docs/csrf-attack.html):**
+**Exemplo de Ataque CSRF (criar temporariamente para demonstração):**
 
 ```html
+<!-- Criar arquivo csrf-attack.html temporário FORA do projeto -->
+<!-- Apenas para demonstração ao vivo, deletar depois -->
 <!DOCTYPE html>
 <html>
   <head>
