@@ -2,10 +2,10 @@ import styles from "./userbio.module.css";
 
 /**
  * ⚠️ COMPONENTE VULNERÁVEL A XSS
- * 
+ *
  * Este componente renderiza HTML diretamente usando dangerouslySetInnerHTML
  * sem nenhuma sanitização.
- * 
+ *
  * Durante o curso (Módulo 1 - Vídeo 1.4), vamos corrigir isso adicionando:
  * - DOMPurify para sanitização
  * - Lista de tags permitidas
@@ -24,8 +24,6 @@ export function UserBio({ bio }) {
         className={styles.bioContent}
         dangerouslySetInnerHTML={{ __html: bio }}
       />
-      <div className={styles.warningBadge}>⚠️ Vulnerável a XSS</div>
     </div>
   );
 }
-

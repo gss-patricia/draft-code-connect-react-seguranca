@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "../../../hooks/useAuth";
 import { useProtectedRoute } from "../../../hooks/useProtectedRoute";
 import { updateUserBio } from "../../../actions/profile";
 import styles from "./page.module.css";
 import { Spinner } from "../../../components/Spinner";
 
 export default function EditProfilePage() {
-  const { user, loading: authLoading } = useProtectedRoute();
+  const { loading: authLoading } = useProtectedRoute();
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -40,11 +39,6 @@ export default function EditProfilePage() {
     <div className={styles.container}>
       <h1 className={styles.title}>Editar Perfil</h1>
 
-      <div className={styles.warning}>
-        <strong>⚠️ AVISO:</strong> Esta página está vulnerável a XSS para fins
-        educacionais. Durante o curso, vamos adicionar sanitização!
-      </div>
-
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formGroup}>
           <label htmlFor="bio">Bio</label>
@@ -57,10 +51,6 @@ export default function EditProfilePage() {
             rows={8}
             className={styles.textarea}
           />
-          <small className={styles.hint}>
-            💡 Teste XSS: Tente inserir{" "}
-            <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code>
-          </small>
         </div>
 
         {message && <div className={styles.message}>{message}</div>}
@@ -72,4 +62,3 @@ export default function EditProfilePage() {
     </div>
   );
 }
-
