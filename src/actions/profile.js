@@ -2,16 +2,18 @@
 
 import { createClient } from "../utils/supabase/server";
 import { database } from "../lib/database";
+import { sanitizeBio } from "../utils/sanitizer";
 import { revalidatePath } from "next/cache";
 
 /**
- * ⚠️ VULNERÁVEL A XSS
+ * ✅ PROTEGIDO CONTRA XSS
  * 
- * Esta action aceita qualquer HTML sem sanitização.
- * Durante o curso (Módulo 1 - XSS), vamos adicionar:
- * - Sanitização com DOMPurify
- * - Validação de input
- * - CSP headers
+ * Esta action sanitiza HTML antes de salvar no banco.
+ * 
+ * Camada 1 de Defesa: Sanitização na origem (ao salvar)
+ * - Remove tags perigosas (<script>, event handlers)
+ * - Mantém apenas tags permitidas (p, strong, em, etc)
+ * - Protege o banco de dados contra conteúdo malicioso
  */
 export async function updateUserBio(formData) {
   try {
@@ -29,11 +31,13 @@ export async function updateUserBio(formData) {
     const username = user.email.split("@")[0];
     const dbUser = await database.getUserByUsername(username);
 
-    // ⚠️ VULNERÁVEL: Aceita qualquer conteúdo sem sanitização
-    const bio = formData.get("bio");
+    // ✅ CAMADA 1: Sanitizar ANTES de salvar no banco
+    const rawBio = formData.get("bio");
+    const cleanBio = sanitizeBio(rawBio);
 
-    // Atualizar bio
-    await database.updateUserBio(dbUser.id, bio);
+    // Atualizar bio com conteúdo sanitizado
+    // Nota: Se cleanBio for "", o banco pode salvar como null (comportamento esperado)
+    await database.updateUserBio(dbUser.id, cleanBio);
 
     revalidatePath("/profile");
     revalidatePath("/");

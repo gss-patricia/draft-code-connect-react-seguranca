@@ -1,6 +1,6 @@
 import { createClient } from "../../utils/supabase/server";
 import { database } from "../../lib/database";
-import { Avatar } from "../../components/Avatar";
+// import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/Button";
 import { UserBio } from "../../components/UserBio";
 import Link from "next/link";
@@ -43,7 +43,7 @@ export default async function ProfilePage() {
       <div className={styles.container}>
         <div className={styles.profileCard}>
           <div className={styles.header}>
-            <Avatar src={dbUser.avatar} alt={dbUser.name} />
+            {/* <Avatar src={dbUser.avatar} alt={dbUser.name} /> */}
             <div className={styles.userInfo}>
               <h1>{dbUser.name}</h1>
               <p className={styles.username}>@{dbUser.username}</p>
@@ -64,7 +64,7 @@ export default async function ProfilePage() {
               </p>
             </div>
 
-            {/* ⚠️ Bio vulnerável - será exibida com dangerouslySetInnerHTML */}
+            {/* ✅ Bio já sanitizada ao salvar (Camada 1) + sanitização ao renderizar (Camada 2) */}
             <UserBio bio={dbUser.bio} />
           </div>
 

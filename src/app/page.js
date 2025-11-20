@@ -2,7 +2,7 @@ import { CardPost } from "../components/CardPost";
 import { database } from "../lib/database";
 import { createClient } from "../utils/supabase/server";
 import { redirect } from "next/navigation";
-import { logEvent } from '../eventLogger'
+import { logEvent } from "../eventLogger";
 
 import styles from "./page.module.css";
 import Link from "next/link";
@@ -36,8 +36,17 @@ export default async function Home({ searchParams }) {
     next,
   } = await getAllPosts(currentPage, searchTerm);
 
-  logEvent({ step: "PAGE_VIEW", operation: "HOME_VIEW", userId: user.id })
+  logEvent({ step: "PAGE_VIEW", operation: "HOME_VIEW", userId: user.id });
 
+  console.log("next", next);
+  console.log("prev", prev);
+  console.log("searchTerm", searchTerm);
+  console.log("currentPage", currentPage);
+  console.log("posts", posts);
+  console.log("user", user);
+  console.log("error", error);
+  console.log("resolvedSearchParams", resolvedSearchParams);
+  console.log("supabase", supabase);
   return (
     <main className={styles.grid}>
       {posts.map((post) => (
@@ -45,12 +54,12 @@ export default async function Home({ searchParams }) {
       ))}
       <div className={styles.links}>
         {prev && (
-          <Link href={{ pathname: "/", query: { page: prev, q: searchTerm } }}>
+          <Link href={`/?page=${prev}${searchTerm ? `&q=${searchTerm}` : ""}`}>
             Página anterior
           </Link>
         )}
         {next && (
-          <Link href={{ pathname: "/", query: { page: next, q: searchTerm } }}>
+          <Link href={`/?page=${next}${searchTerm ? `&q=${searchTerm}` : ""}`}>
             Próxima página
           </Link>
         )}

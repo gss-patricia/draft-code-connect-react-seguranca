@@ -18,7 +18,8 @@ export class DatabaseService {
           *,
           author:User(*),
           comments:Comment(*)
-        `
+        `,
+          { count: 'exact' }  // ✅ Pedir count total para paginação
         )
         .order("id", { ascending: false })
         .range(skip, skip + perPage - 1);
