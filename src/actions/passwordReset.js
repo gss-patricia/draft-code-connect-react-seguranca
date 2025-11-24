@@ -5,10 +5,10 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * ⚠️ VERSÃO INSEGURA DE RESET PASSWORD (DEMONSTRAÇÃO)
- * 
+ *
  * Esta implementação tem múltiplas vulnerabilidades que serão
  * corrigidas durante o curso (Módulo 2 - Vídeo 2.4):
- * 
+ *
  * PROBLEMAS:
  * 1. Token em texto plano (visível)
  * 2. Token contém o email (pode ser decodificado)
@@ -16,7 +16,7 @@ import { createClient } from "@supabase/supabase-js";
  * 4. Sem expiração
  * 5. Token pode ser reutilizado (sem one-time use)
  * 6. Sem rate limiting
- * 
+ *
  * CORREÇÕES NO CURSO:
  * - Usar Supabase Auth nativo (supabase.auth.resetPasswordForEmail)
  * - Hash SHA-256 se precisar armazenar tokens customizados
@@ -52,7 +52,8 @@ export async function requestPasswordReset(email) {
 
     return {
       success: true,
-      message: "Link de recuperação enviado! Verifique sua caixa de entrada.",
+      message:
+        "Se este email existir, enviaremos um link de recuperação. (Modo de demonstração: exibindo token inseguro abaixo)",
       // ⚠️ DANGER: Retornando token para fins de demonstração
       // Em produção NUNCA faça isso!
       debugToken: token,
@@ -81,7 +82,9 @@ export async function resetPassword(token, newPassword) {
     console.log("   ✗ Token contém email em base64 (fácil decodificar)");
     console.log("   ✗ Sem verificação de expiração");
     console.log("   ✗ Token pode ser reutilizado infinitamente");
-    console.log("   ✗ Qualquer pessoa com o token pode trocar a senha DE VERDADE");
+    console.log(
+      "   ✗ Qualquer pessoa com o token pode trocar a senha DE VERDADE"
+    );
 
     // ⚠️ CRIAR ADMIN CLIENT (usa Service Role Key)
     // Em produção real, você NUNCA faria isso assim!
@@ -142,8 +145,7 @@ export async function resetPassword(token, newPassword) {
 
     return {
       success: true,
-      message:
-        "✅ Senha alterada com sucesso! Faça login com sua nova senha.",
+      message: "✅ Senha alterada com sucesso! Faça login com sua nova senha.",
     };
   } catch (error) {
     console.error("Erro ao resetar senha:", error);
@@ -153,4 +155,3 @@ export async function resetPassword(token, newPassword) {
     };
   }
 }
-
