@@ -1,29 +1,34 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import styles from "./forgotpassword.module.css";
 import { Input } from "../Input";
 import { Button } from "../Button";
 import { Link } from "../Link";
 import { Spinner } from "../Spinner";
 import { ErrorMessage } from "../ErrorMessage";
-import { requestPasswordReset } from "../../actions/passwordReset";
+import { createClient } from "../../utils/supabase/client";
 
 /**
- * ⚠️ COMPONENTE COM VERSÃO INSEGURA DE RESET PASSWORD
+ * ✅ COMPONENTE SEGURO COM SUPABASE AUTH NATIVO
  *
- * Durante o curso (Módulo 2 - Vídeo 2.4), vamos corrigir as vulnerabilidades!
+ * Migrado no Módulo 2 - Vídeo 2.5 para usar resetPasswordForEmail()
+ *
+ * SEGURANÇA:
+ * ✅ Token JWT seguro
+ * ✅ Expiração automática (1h)
+ * ✅ Uso único integrado (one-time use)
+ * ✅ Token no hash da URL (#) → não aparece em logs/histórico
+ * ✅ Validação automática dentro do Supabase
+ * ✅ Nenhum código manual de geração/validação de token
  */
 export const ForgotPassword = () => {
-  const router = useRouter();
+  const supabase = createClient();
 
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [debugToken, setDebugToken] = useState("");
-  const [debugUrl, setDebugUrl] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,19 +41,20 @@ export const ForgotPassword = () => {
     setIsLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
-    setDebugToken("");
-    setDebugUrl("");
 
     try {
-      // ⚠️ VERSÃO INSEGURA: Token em texto plano, sem expiração
-      const result = await requestPasswordReset(email);
+      // ✅ USAR SUPABASE AUTH NATIVO
+      // O Supabase envia o email com token seguro no hash (#)
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
 
-      if (result.success) {
-        setSuccessMessage(result.message);
-        console.log("DEBUG TOKEN");
-        console.log("Reset URL:", result.debugUrl);
+      if (error) {
+        setErrorMessage(error.message);
       } else {
-        setErrorMessage(result.error);
+        setSuccessMessage(
+          "✅ Email enviado! Verifique sua caixa de entrada e spam."
+        );
       }
     } catch (error) {
       console.error("Erro ao solicitar reset:", error);
