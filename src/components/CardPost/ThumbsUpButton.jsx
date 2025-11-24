@@ -4,10 +4,13 @@ import { IconButton } from "../IconButton";
 import { Spinner } from "../Spinner";
 import { ThumbsUp } from "../icons/ThumbsUp";
 
-export const ThumbsUpButton = ({ onClick, disabled, isLoading }) => {
+import { useFormStatus } from "react-dom";
+
+export const ThumbsUpButton = () => {
+  const { pending } = useFormStatus();
   return (
-    <IconButton onClick={onClick} disabled={disabled}>
-      {isLoading ? <Spinner /> : <ThumbsUp />}
+    <IconButton disabled={pending}>
+      {pending ? <Spinner /> : <ThumbsUp />}
     </IconButton>
   );
 };

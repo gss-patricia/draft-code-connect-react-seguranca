@@ -1,21 +1,14 @@
-"use client";
-
 import Image from "next/image";
 import { Avatar } from "../Avatar";
 import styles from "./cardpost.module.css";
 import Link from "next/link";
 
-import { postComment } from "../../actions";
+import { incrementThumbsUp, postComment } from "../../actions";
 import { ThumbsUpButton } from "./ThumbsUpButton";
 import { ModalComment } from "../ModalComment";
-import { useLike } from "../../hooks/useLike";
 
 export const CardPost = ({ post, highlight }) => {
-  const { likes, isLiking, handleLike, isDisabled } = useLike(
-    post.id,
-    post.likes
-  );
-
+  const submitThumbsUp = incrementThumbsUp.bind(null, post);
   const submitComment = postComment.bind(null, post);
 
   return (
@@ -36,14 +29,10 @@ export const CardPost = ({ post, highlight }) => {
       </section>
       <footer className={styles.footer}>
         <div className={styles.actions}>
-          <div>
-            <ThumbsUpButton
-              onClick={handleLike}
-              disabled={isDisabled}
-              isLoading={isLiking}
-            />
-            <p>{likes}</p>
-          </div>
+          <form action={submitThumbsUp}>
+            <ThumbsUpButton />
+            <p>{post.likes}</p>
+          </form>
           <div>
             <ModalComment action={submitComment} />
             <p>{post.comments.length}</p>
