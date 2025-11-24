@@ -11,7 +11,7 @@ import { ModalComment } from "../../../components/ModalComment";
 import { Spinner } from "../../../components/Spinner";
 import { DeletePostButton } from "../../../components/DeletePostButton";
 import { postComment } from "../../../actions";
-import { logEvent } from '../../../eventLogger'
+import { logEvent } from "../../../eventLogger";
 
 const PagePost = () => {
   // ✅ PROTEÇÃO CLIENT-SIDE: Hook customizado
@@ -19,7 +19,12 @@ const PagePost = () => {
   const params = useParams();
   const slug = params.slug;
 
-  logEvent({ step: 'PAGE_VIEW', operation: 'POST_SLUG_VIEW', userId: user?.id, metadata: { slug } })
+  logEvent({
+    step: "PAGE_VIEW",
+    operation: "POST_SLUG_VIEW",
+    userId: user?.id,
+    metadata: { slug },
+  });
 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
@@ -124,9 +129,9 @@ const PagePost = () => {
   return (
     <div>
       <CardPost post={post} highlight />
-      
+
       {/* ⚠️ VULNERÁVEL: Botão de delete sem RBAC/ABAC - qualquer usuário pode deletar */}
-      <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+      <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
         <DeletePostButton postId={post.id} />
       </div>
 
@@ -137,6 +142,7 @@ const PagePost = () => {
       <ModalComment
         action={postComment.bind(null, post)}
         onCommentAdded={handleCommentAdded}
+        hideButton={true}
       />
       <CommentList comments={comments} onReplyAdded={handleCommentAdded} />
     </div>

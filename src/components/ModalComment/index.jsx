@@ -10,7 +10,11 @@ import styles from "./commentmodal.module.css";
 import { SubmitButton } from "../SubmitButton";
 import { Subheading } from "../Subheading";
 
-export const ModalComment = ({ action, onCommentAdded }) => {
+export const ModalComment = ({
+  action,
+  onCommentAdded,
+  hideButton = false,
+}) => {
   const modalRef = useRef(null);
 
   const handleSubmit = async (formData) => {
@@ -44,9 +48,11 @@ export const ModalComment = ({ action, onCommentAdded }) => {
           </div>
         </form>
       </Modal>
-      <IconButton onClick={() => modalRef.current.openModal()}>
-        <Chat />
-      </IconButton>
+      {!hideButton && (
+        <IconButton onClick={() => modalRef.current.openModal()}>
+          <Chat />
+        </IconButton>
+      )}
     </>
   );
 };
