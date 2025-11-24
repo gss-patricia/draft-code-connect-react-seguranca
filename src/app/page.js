@@ -38,15 +38,6 @@ export default async function Home({ searchParams }) {
 
   logEvent({ step: "PAGE_VIEW", operation: "HOME_VIEW", userId: user.id });
 
-  console.log("next", next);
-  console.log("prev", prev);
-  console.log("searchTerm", searchTerm);
-  console.log("currentPage", currentPage);
-  console.log("posts", posts);
-  console.log("user", user);
-  console.log("error", error);
-  console.log("resolvedSearchParams", resolvedSearchParams);
-  console.log("supabase", supabase);
   return (
     <main className={styles.grid}>
       {posts.map((post) => (

@@ -1,32 +1,66 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '../../../utils/supabase/server';
-import { database } from '../../../lib/database';
+import { NextResponse } from "next/server";
+import { createClient } from "../../../utils/supabase/server";
+import { database } from "../../../lib/database";
+import { validateCSRF } from "../../../lib/csrf";
 
 /**
- * ⚠️ API ROUTE PROPOSITALMENTE VULNERÁVEL A CSRF
- * 
- * Esta rota NÃO valida:
- * - Token CSRF
- * - Header Origin
- * - Header Referer
- * 
- * Isso permite que qualquer site malicioso dispare likes.
- * 
- * IMPORTANTE: Esta vulnerabilidade é INTENCIONAL para fins educacionais.
- * Em produção, SEMPRE valide origem e use tokens CSRF!
+ * 🛡️ API ROUTE PROTEGIDA CONTRA CSRF
+ *
+ * Esta rota VALIDA:
+ * ✅ Token CSRF (cookie vs header)
+ * ✅ Autenticação do usuário
+ *
+ * IMPORTANTE: Para demonstração educacional, você pode comentar
+ * a validação CSRF para mostrar a vulnerabilidade.
  */
+
+// ⚠️ CORS Headers - APENAS PARA DEMONSTRAÇÃO EDUCACIONAL!
+// Permite que o ataque CSRF funcione de localhost:5500
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "http://localhost:5500",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, x-csrf-token",
+  "Access-Control-Allow-Credentials": "true", // ⚠️ Permite envio de cookies!
+};
+
+// Handle preflight (OPTIONS) requests
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(request) {
   try {
-    // ⚠️ VULNERÁVEL: Aceita request de qualquer origem
-    console.log('⚠️ [CSRF VULNERABLE] Like request recebido');
-    
-    // ✅ Verificar autenticação (mas não origem!)
+    console.log("🔒 [CSRF PROTECTED] Like request recebido");
+
+    // 🛡️ PASSO 1: Validar CSRF ANTES de tudo
+    const csrfValid = await validateCSRF(request);
+
+    if (!csrfValid) {
+      console.log("❌ CSRF inválido - Ataque BLOQUEADO!");
+      return NextResponse.json(
+        { error: "CSRF token inválido ou ausente" },
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    console.log("✅ CSRF válido - continuando...");
+
+    // 🔐 PASSO 2: Verificar autenticação
     const supabase = await createClient();
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
 
     if (error || !user) {
-      console.log('❌ Usuário não autenticado');
-      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+      console.log("❌ Usuário não autenticado");
+      return NextResponse.json(
+        { error: "Não autenticado" },
+        { status: 401, headers: corsHeaders }
+      );
     }
 
     // Pegar postId do body
@@ -34,53 +68,35 @@ export async function POST(request) {
     const postId = body.postId || body.post?.id;
 
     if (!postId) {
-      return NextResponse.json({ error: 'postId obrigatório' }, { status: 400 });
+      return NextResponse.json(
+        { error: "postId obrigatório" },
+        { status: 400, headers: corsHeaders }
+      );
     }
 
-    console.log(`👍 Incrementando like no post ${postId} pelo usuário ${user.email}`);
+    console.log(
+      `👍 Incrementando like no post ${postId} pelo usuário ${user.email}`
+    );
 
-    // ⚠️ VULNERÁVEL: Não valida origem do request
-    // Incrementar like
+    // ✅ PROTEGIDO: CSRF foi validado antes
     await database.incrementPostLikes(postId);
 
-    console.log(`✅ Like incrementado com sucesso no post ${postId}`);
+    console.log(`✅ Like incrementado com sucesso e PROTEGIDO! 🛡️`);
 
-    // ⚠️ CORS permissivo (permite qualquer origem)
-    // Pegar origem do request
-    const origin = request.headers.get('origin') || 'null';
-    
     return NextResponse.json(
-      { success: true, message: 'Like registrado' },
       {
-        status: 200,
-        headers: {
-          'Access-Control-Allow-Origin': origin,  // ⚠️ VULNERÁVEL! Aceita qualquer origem
-          'Access-Control-Allow-Credentials': 'true',  // ⚠️ VULNERÁVEL!
-        }
-      }
+        success: true,
+        message: "Like registrado com proteção CSRF",
+      },
+      { headers: corsHeaders }
     );
   } catch (error) {
-    console.error('Erro ao processar like:', error);
+    console.error("Erro ao processar like:", error);
     return NextResponse.json(
-      { error: 'Erro interno' },
-      { status: 500 }
+      { error: "Erro interno" },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
 
-// ⚠️ VULNERÁVEL: CORS permissivo
-export async function OPTIONS(request) {
-  // Pegar origem do request
-  const origin = request.headers.get('origin') || 'null';
-  
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': origin,  // ⚠️ Aceita qualquer origem
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Credentials': 'true',
-    }
-  });
-}
 
