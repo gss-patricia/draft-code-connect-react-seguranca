@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import db from "../../supabase/db";
 import { logEventError } from "../eventLogger";
 import database from "../lib/database";
+import { canDeletePost } from "../lib/authorization";
 
 export async function deletePost(postId) {
   try {
@@ -33,7 +34,7 @@ export async function deletePost(postId) {
       return { success: false, error: "Usuário não encontrado" };
     }
 
-    // 🔍 Buscar o post para verificar ownership
+    // 🔍 Buscar o post para verificar permissões
     const post = await database.getPostById(postId);
 
     if (!post) {
@@ -47,15 +48,10 @@ export async function deletePost(postId) {
       return { success: false, error: "Post não encontrado" };
     }
 
-    // 🔒 HIERARQUIA DE PERMISSÕES:
-    // 1. Admin (RBAC) → pode deletar qualquer post
-    // 2. Owner (ABAC) → pode deletar próprio post
-    // 3. Outros → negado
+    // 🔒 VERIFICAR AUTORIZAÇÃO usando função centralizada
+    const authResult = canDeletePost(dbUser, post);
 
-    const isAdmin = dbUser.role === "admin";
-    const isOwner = post.authorId === dbUser.id;
-
-    if (!isAdmin && !isOwner) {
+    if (!authResult.allowed) {
       // 🔒 LOG DE SEGURANÇA: Tentativa de acesso negada
       logEventError({
         step: "AUTHORIZATION",
@@ -65,11 +61,12 @@ export async function deletePost(postId) {
         metadata: {
           postId,
           postAuthorId: post.authorId,
+          postReportCount: post.reportCount,
           username: dbUser.username,
           userId: dbUser.id,
           userRole: dbUser.role,
-          isAdmin: false,
-          isOwner: false,
+          reason: authResult.reason,
+          accessType: authResult.accessType,
           userEmail: authUser.email,
         },
       });
@@ -79,6 +76,18 @@ export async function deletePost(postId) {
       };
     }
 
+    // ✅ Permissão concedida - Log para debugging
+    console.log("✅ Permissão concedida:", {
+      username: dbUser.username,
+      role: dbUser.role,
+      postId: post.id,
+      authorId: post.authorId,
+      reportCount: post.reportCount,
+      reason: authResult.reason,
+      accessType: authResult.accessType,
+    });
+
+    // 🗑️ Deletar o post
     const { error } = await db.from("Post").delete().eq("id", postId);
 
     if (error) {
