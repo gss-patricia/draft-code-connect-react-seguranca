@@ -18,11 +18,14 @@ export async function middleware(request) {
   const nonce = generateNonce();
 
   // 3. Adicionar CSP com nonce
-  response.headers.set("Content-Security-Policy", getCSPHeader(nonce));
+  const cspHeader = getCSPHeader(nonce);
+  response.headers.set("Content-Security-Policy", cspHeader);
 
   // 4. Passar nonce para o frontend via header customizado
-  // O layout.js vai ler esse header para usar em scripts inline
   response.headers.set("x-nonce", nonce);
+
+  // Debug: log para verificar se middleware está executando
+  console.log("🔒 CSP Middleware executado para:", request.nextUrl.pathname);
 
   return response;
 }
