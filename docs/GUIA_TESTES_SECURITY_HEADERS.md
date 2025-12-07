@@ -522,29 +522,36 @@ Criar `test-referrer.html` na raiz:
 
 ---
 
-# 🎬 DEMO 4: SCORE NO SECURITYHEADERS.COM (Impactante!)
+# 🎬 DEMO 4: VALIDANDO TODOS OS HEADERS (Essencial!)
 
 ## **Objetivo:**
 
-Mostrar o score do site em um validador público.
+Validar que TODOS os headers estão sendo enviados corretamente.
 
-## **⚠️ IMPORTANTE:**
+## **❌ IMPORTANTE: securityheaders.com NÃO funciona com localhost!**
 
-Para testar no securityheaders.com, você precisa fazer **deploy em produção** (Vercel, Netlify, etc), pois localhost não é acessível pela internet.
+O site https://securityheaders.com precisa fazer uma requisição para o seu site, mas `localhost:3000` **só existe na sua máquina**. O servidor deles não consegue acessar.
 
-## **Alternativa para o vídeo:**
+**Para usar securityheaders.com, você precisa:**
+- ✅ Fazer deploy em produção (Vercel, Netlify, Railway, etc)
+- ✅ Ter um domínio público acessível pela internet
 
-### **Opção A: Usar site já deployado**
+---
 
-Se tiver um deploy, use no vídeo.
+## **✅ ALTERNATIVAS PARA DEMONSTRAR LOCALMENTE:**
 
-### **Opção B: Simular com curl (local)**
+### **OPÇÃO 1: curl (RECOMENDADO - Simples e rápido)** ⭐⭐⭐⭐⭐
+
+**Por que usar:**
+- ✅ Funciona 100% local
+- ✅ Mostra TODOS os headers de uma vez
+- ✅ Rápido (1 comando)
+- ✅ Profissional
 
 **Roteiro:**
 
 **Fala:**
-
-> "Para testar os headers localmente, vou usar o comando `curl` para ver todos os headers de resposta."
+> "Para validar que todos os headers estão funcionando, vou usar o comando `curl` no terminal. Esse comando faz uma requisição e mostra todos os headers de resposta."
 
 **Ação no terminal:**
 
@@ -562,27 +569,488 @@ referrer-policy: strict-origin-when-cross-origin
 permissions-policy: camera=(), microphone=(), geolocation=(), interest-cohort=()
 x-xss-protection: 1; mode=block
 content-type: text/html; charset=utf-8
+date: Fri, 06 Dec 2024 10:30:00 GMT
+connection: keep-alive
 ...
 ```
 
 **Fala:**
+> "Perfeito! Olha só todos os headers que configuramos aparecendo aqui:
+> - X-Frame-Options: DENY ✅
+> - X-Content-Type-Options: nosniff ✅
+> - Referrer-Policy: strict-origin-when-cross-origin ✅
+> - Permissions-Policy com câmera e microfone bloqueados ✅
+> - X-XSS-Protection: 1; mode=block ✅
+>
+> Todos funcionando! E repara que o Strict-Transport-Security NÃO aparece, porque estamos em desenvolvimento. Só vai aparecer em produção."
 
-> "Olha só! Todos os headers que configuramos estão aqui! O `curl` mostra que o servidor está enviando corretamente."
+**💡 DICA:** Se o output for muito longo, use `| grep -i "x-\|permissions\|referrer"` para filtrar só os security headers:
 
-### **Opção C: Screenshot do securityheaders.com (preparar antes)**
+```bash
+curl -I http://localhost:3000 | grep -i "x-\|permissions\|referrer"
+```
 
-Se você já tiver um deploy:
+---
 
-1. Ir para https://securityheaders.com
-2. Digitar URL do seu site
-3. Clicar "Scan"
-4. Tirar screenshot do resultado
+### **OPÇÃO 2: Criar página HTML de validação** ⭐⭐⭐⭐
+
+Criar `test-headers-validator.html` na raiz do projeto:
+
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Validador de Security Headers</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 40px 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        font-size: 1.1em;
+        opacity: 0.9;
+      }
+
+      .content {
+        padding: 40px;
+      }
+
+      .test-button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 20px 40px;
+        font-size: 1.2em;
+        border-radius: 10px;
+        cursor: pointer;
+        width: 100%;
+        transition: transform 0.2s, box-shadow 0.2s;
+        font-weight: bold;
+      }
+
+      .test-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+      }
+
+      .test-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .results {
+        margin-top: 30px;
+        display: none;
+      }
+
+      .results.show {
+        display: block;
+      }
+
+      .header-item {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border-left: 5px solid #ddd;
+        transition: all 0.3s;
+      }
+
+      .header-item.success {
+        border-left-color: #28a745;
+        background: #d4edda;
+      }
+
+      .header-item.warning {
+        border-left-color: #ffc107;
+        background: #fff3cd;
+      }
+
+      .header-item.error {
+        border-left-color: #dc3545;
+        background: #f8d7da;
+      }
+
+      .header-name {
+        font-weight: bold;
+        font-size: 1.1em;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .header-value {
+        font-family: "Courier New", monospace;
+        background: white;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 10px;
+        word-break: break-all;
+      }
+
+      .status-icon {
+        font-size: 1.5em;
+      }
+
+      .summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+      }
+
+      .summary h2 {
+        font-size: 3em;
+        margin-bottom: 10px;
+      }
+
+      .summary p {
+        font-size: 1.2em;
+        opacity: 0.9;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 40px;
+        font-size: 1.2em;
+        color: #666;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .info-box {
+        background: #e3f2fd;
+        border-left: 5px solid #2196f3;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+      }
+
+      .info-box h3 {
+        color: #1976d2;
+        margin-bottom: 10px;
+      }
+
+      .info-box ul {
+        margin-left: 20px;
+        line-height: 1.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔒 Validador de Security Headers</h1>
+        <p>Teste local dos headers de segurança</p>
+      </div>
+
+      <div class="content">
+        <div class="info-box">
+          <h3>📋 O que este validador faz?</h3>
+          <ul>
+            <li>Faz uma requisição para http://localhost:3000</li>
+            <li>Verifica se os security headers estão presentes</li>
+            <li>Mostra o status de cada header (presente/ausente)</li>
+            <li>Calcula um score baseado nos headers encontrados</li>
+          </ul>
+        </div>
+
+        <button class="test-button" onclick="testHeaders()">
+          🚀 Testar Headers Agora
+        </button>
+
+        <div id="loading" class="loading" style="display: none;">
+          <div class="spinner"></div>
+          <p>Testando headers...</p>
+        </div>
+
+        <div id="results" class="results">
+          <div id="summary" class="summary"></div>
+          <div id="headers-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const EXPECTED_HEADERS = [
+        {
+          name: "X-Frame-Options",
+          expected: "DENY",
+          description: "Previne clickjacking bloqueando iframes",
+          critical: true,
+        },
+        {
+          name: "X-Content-Type-Options",
+          expected: "nosniff",
+          description: "Previne MIME sniffing",
+          critical: true,
+        },
+        {
+          name: "Referrer-Policy",
+          expected: "strict-origin-when-cross-origin",
+          description: "Controla vazamento de URLs com tokens",
+          critical: true,
+        },
+        {
+          name: "Permissions-Policy",
+          expected: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+          description: "Bloqueia APIs sensíveis do navegador",
+          critical: true,
+        },
+        {
+          name: "X-XSS-Protection",
+          expected: "1; mode=block",
+          description: "Proteção XSS legada (browsers antigos)",
+          critical: false,
+        },
+        {
+          name: "Strict-Transport-Security",
+          expected: null, // Não esperado em dev
+          description:
+            "Force HTTPS (só em produção, ausente em desenvolvimento é OK)",
+          critical: false,
+        },
+        {
+          name: "Content-Security-Policy",
+          expected: null, // Ainda não implementado
+          description: "Proteção avançada contra XSS (próximo vídeo!)",
+          critical: true,
+        },
+      ];
+
+      async function testHeaders() {
+        const button = document.querySelector(".test-button");
+        const loading = document.getElementById("loading");
+        const results = document.getElementById("results");
+
+        // Reset UI
+        button.disabled = true;
+        loading.style.display = "block";
+        results.classList.remove("show");
+
+        try {
+          // Fazer requisição
+          const response = await fetch("http://localhost:3000");
+
+          // Aguardar 1 segundo (para efeito visual)
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          // Processar headers
+          const headers = {};
+          response.headers.forEach((value, key) => {
+            headers[key.toLowerCase()] = value;
+          });
+
+          // Calcular resultados
+          let score = 0;
+          let maxScore = 0;
+          const headerResults = [];
+
+          EXPECTED_HEADERS.forEach((expected) => {
+            const headerName = expected.name.toLowerCase();
+            const headerValue = headers[headerName];
+            const isPresent = !!headerValue;
+            const isCorrect = expected.expected
+              ? headerValue === expected.expected
+              : false;
+
+            // Calcular score
+            if (expected.critical) {
+              maxScore += 20;
+              if (isPresent) {
+                score += 20;
+              }
+            } else {
+              maxScore += 10;
+              if (isPresent) {
+                score += 10;
+              }
+            }
+
+            // Determinar status
+            let status = "error";
+            let statusText = "❌ Ausente";
+
+            if (expected.name === "Strict-Transport-Security" && !isPresent) {
+              status = "success";
+              statusText = "✅ OK (dev mode)";
+            } else if (
+              expected.name === "Content-Security-Policy" &&
+              !isPresent
+            ) {
+              status = "warning";
+              statusText = "⚠️ Ausente (próximo vídeo)";
+            } else if (isPresent) {
+              status = "success";
+              statusText = "✅ Presente";
+            }
+
+            headerResults.push({
+              name: expected.name,
+              value: headerValue || "Não encontrado",
+              description: expected.description,
+              status,
+              statusText,
+            });
+          });
+
+          // Exibir resultados
+          displayResults(score, maxScore, headerResults);
+        } catch (error) {
+          alert(
+            "Erro ao testar headers. Certifique-se que o servidor está rodando em http://localhost:3000"
+          );
+          console.error(error);
+        } finally {
+          button.disabled = false;
+          loading.style.display = "none";
+        }
+      }
+
+      function displayResults(score, maxScore, headerResults) {
+        const results = document.getElementById("results");
+        const summary = document.getElementById("summary");
+        const headersList = document.getElementById("headers-list");
+
+        // Calcular nota letra
+        const percentage = (score / maxScore) * 100;
+        let grade = "F";
+        if (percentage >= 90) grade = "A+";
+        else if (percentage >= 80) grade = "A";
+        else if (percentage >= 70) grade = "B";
+        else if (percentage >= 60) grade = "C";
+        else if (percentage >= 50) grade = "D";
+
+        // Mostrar summary
+        summary.innerHTML = `
+          <h2>${grade}</h2>
+          <p>${score} / ${maxScore} pontos (${percentage.toFixed(0)}%)</p>
+        `;
+
+        // Mostrar headers
+        headersList.innerHTML = headerResults
+          .map(
+            (header) => `
+          <div class="header-item ${header.status}">
+            <div class="header-name">
+              <span class="status-icon">${header.statusText}</span>
+              <span>${header.name}</span>
+            </div>
+            <p>${header.description}</p>
+            <div class="header-value">${header.value}</div>
+          </div>
+        `
+          )
+          .join("");
+
+        results.classList.add("show");
+
+        // Scroll suave para resultados
+        results.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    </script>
+  </body>
+</html>
+```
+
+**Roteiro:**
+
+**Fala:**
+> "Criei um validador customizado que roda 100% local. Vou abrir aqui..."
+
+**Ação:**
+1. Abrir `test-headers-validator.html` no navegador
+2. Clicar em "Testar Headers Agora"
+3. Aguardar animação
+4. Mostrar resultado com score
+
+**Fala:**
+> "Olha só! Ele testou todos os headers e calculou um score. Temos nota B! Falta apenas o Content-Security-Policy que vamos implementar no próximo vídeo."
+
+---
+
+### **OPÇÃO 3: Screenshot do securityheaders.com (se tiver deploy)** ⭐⭐⭐
+
+**SOMENTE se você já fez deploy em produção:**
+
+1. Fazer deploy no Vercel/Netlify
+2. Ir para https://securityheaders.com
+3. Digitar URL do seu site em produção
+4. Clicar "Scan"
+5. Tirar screenshot do resultado
 
 **Score esperado:** **B** (falta CSP)
 
 **Fala no vídeo:**
+> "Para quem já fez deploy em produção, pode testar no securityheaders.com. Vou mostrar um exemplo aqui... Nota B! Falta o CSP que vamos implementar no próximo vídeo."
 
-> "Aqui no securityheaders.com, nosso site recebeu nota B! Falta apenas o Content-Security-Policy, que vamos implementar no próximo vídeo. Aí vamos para A+!"
+---
+
+## **🎯 RECOMENDAÇÃO:**
+
+**Para o vídeo, use OPÇÃO 1 (curl)** - É:
+- ✅ Mais rápido
+- ✅ Mais profissional
+- ✅ Funciona 100% local
+- ✅ Mostra todos os headers de uma vez
+
+**OPÇÃO 2 (HTML Validator)** é legal, mas toma mais tempo para criar e explicar.
+
+**OPÇÃO 3 (securityheaders.com)** só se você realmente tiver um deploy público.
 
 ---
 
