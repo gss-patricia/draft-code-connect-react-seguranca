@@ -8,6 +8,7 @@ import { ThumbsUpButton } from "./ThumbsUpButton";
 import { ModalComment } from "../ModalComment";
 
 export const CardPost = ({ post, highlight }) => {
+  // Vincula o post à action antes de passar pro form
   const submitThumbsUp = incrementThumbsUp.bind(null, post);
   const submitComment = postComment.bind(null, post);
 

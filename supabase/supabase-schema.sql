@@ -5,7 +5,12 @@ CREATE TABLE "User" (
     "id" SERIAL PRIMARY KEY,
     "name" TEXT NOT NULL,
     "username" TEXT NOT NULL UNIQUE,
-    "avatar" TEXT NOT NULL
+    "avatar" TEXT NOT NULL DEFAULT 'https://raw.githubusercontent.com/gss-patricia/code-connect-assets/main/authors/anabeatriz_dev.png',
+    "role" TEXT DEFAULT 'user',
+    "bio" TEXT,
+    
+    -- ✅ Garantir que avatar seja sempre a URL padrão
+    CONSTRAINT "check_avatar_default" CHECK ("avatar" = 'https://raw.githubusercontent.com/gss-patricia/code-connect-assets/main/authors/anabeatriz_dev.png')
 );
 
 -- Criar tabela Post
@@ -20,6 +25,7 @@ CREATE TABLE "Post" (
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "authorId" INTEGER NOT NULL,
     "likes" INTEGER NOT NULL DEFAULT 0,
+    "reportCount" INTEGER DEFAULT 0,
     
     CONSTRAINT "Post_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -35,7 +41,7 @@ CREATE TABLE "Comment" (
     "parentId" INTEGER,
     
     CONSTRAINT "Comment_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "Comment_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Comment_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "Comment_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "Comment"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
@@ -44,6 +50,8 @@ CREATE INDEX "idx_post_author" ON "Post"("authorId");
 CREATE INDEX "idx_comment_author" ON "Comment"("authorId");
 CREATE INDEX "idx_comment_post" ON "Comment"("postId");
 CREATE INDEX "idx_comment_parent" ON "Comment"("parentId");
+CREATE INDEX "idx_user_role" ON "User"("role");
+CREATE INDEX "idx_post_report_count" ON "Post"("reportCount");
 
 -- Função para atualizar updatedAt automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()

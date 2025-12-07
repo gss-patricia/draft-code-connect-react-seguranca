@@ -3,6 +3,10 @@ import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
+// ✅ Avatar padrão (mesma constante usada no código)
+const DEFAULT_AVATAR_URL =
+  "https://raw.githubusercontent.com/gss-patricia/code-connect-assets/main/authors/anabeatriz_dev.png";
+
 // Configuração do Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -19,39 +23,82 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function main() {
   console.log("🌱 Iniciando seed do Supabase...");
 
-  const author = {
-    name: "Ana Beatriz",
-    username: "anabeatriz_dev",
-    avatar:
-      "https://raw.githubusercontent.com/gss-patricia/code-connect-assets/main/authors/anabeatriz_dev.png",
-  };
-
-  // Verificar se o autor já existe
-  const { data: existingAuthor } = await supabase
-    .from("User")
-    .select("*")
-    .eq("username", author.username)
-    .single();
+  // ============================================
+  // Criar usuários com diferentes roles para demonstração de segurança
+  // ============================================
+  const users = [
+    {
+      name: "Admin User",
+      username: "admin",
+      avatar: DEFAULT_AVATAR_URL, // ✅ Avatar padrão
+      role: "admin",
+      bio: "Administrador do sistema",
+    },
+    {
+      name: "Moderador",
+      username: "moderador",
+      avatar: DEFAULT_AVATAR_URL, // ✅ Avatar padrão
+      role: "moderator",
+      bio: "Moderador da comunidade",
+    },
+    {
+      name: "Ana Beatriz",
+      username: "anabeatriz_dev",
+      avatar: DEFAULT_AVATAR_URL, // ✅ Avatar padrão
+      role: "user",
+      bio: null,
+    },
+  ];
 
   let ana;
-  if (existingAuthor) {
-    console.log("✅ Autor já existe:", existingAuthor);
-    ana = existingAuthor;
-  } else {
-    // Criar o autor
-    const { data: newAuthor, error: authorError } = await supabase
+  for (const user of users) {
+    const { data: existingUser } = await supabase
       .from("User")
-      .insert([author])
-      .select()
+      .select("*")
+      .eq("username", user.username)
       .single();
 
-    if (authorError) {
-      console.error("❌ Erro ao criar autor:", authorError);
-      throw authorError;
-    }
+    if (existingUser) {
+      console.log(`✅ Usuário já existe: ${user.username} (${user.role})`);
+      if (user.username === "anabeatriz_dev") {
+        ana = existingUser;
+      }
+    } else {
+      // ✅ Garantir que dados estão limpos antes de inserir
+      const cleanUser = {
+        ...user,
+        name: user.name.trim(),
+        username: user.username.trim(),
+        avatar: DEFAULT_AVATAR_URL, // ✅ SEMPRE avatar padrão
+        bio: user.bio ? user.bio.trim() : null,
+      };
 
-    console.log("✅ Autor criado:", newAuthor);
-    ana = newAuthor;
+      const { data: newUser, error: userError } = await supabase
+        .from("User")
+        .insert([cleanUser])
+        .select()
+        .single();
+
+      if (userError) {
+        console.error(`❌ Erro ao criar usuário ${user.username}:`, userError);
+        throw userError;
+      }
+
+      console.log(`✅ Usuário criado: ${user.username} (${user.role})`);
+      if (user.username === "anabeatriz_dev") {
+        ana = newUser;
+      }
+    }
+  }
+
+  // Se ana não foi definida, buscar ela novamente
+  if (!ana) {
+    const { data } = await supabase
+      .from("User")
+      .select("*")
+      .eq("username", "anabeatriz_dev")
+      .single();
+    ana = data;
   }
 
   const posts = [

@@ -1,5 +1,6 @@
 import db from "../../supabase/db";
-import logger from '../logger'
+import logger from "../logger";
+import { DEFAULT_AVATAR_URL } from "../constants";
 
 // Data layer para centralizar todas as consultas do Supabase
 export class DatabaseService {
@@ -18,7 +19,8 @@ export class DatabaseService {
           *,
           author:User(*),
           comments:Comment(*)
-        `
+        `,
+          { count: "exact" }
         )
         .order("id", { ascending: false })
         .range(skip, skip + perPage - 1);
@@ -37,8 +39,8 @@ export class DatabaseService {
           page,
           searchTerm,
           perPage,
-          error
-        })
+          error,
+        });
         throw error;
       }
 
@@ -54,7 +56,7 @@ export class DatabaseService {
         page,
         searchTerm,
         perPage,
-      })
+      });
 
       return { data: posts || [], prev, next };
     } catch (error) {
@@ -64,8 +66,8 @@ export class DatabaseService {
         page,
         searchTerm,
         perPage,
-        error
-      })
+        error,
+      });
       return { data: [], prev: null, next: null };
     }
   }
@@ -96,8 +98,8 @@ export class DatabaseService {
           step: "DATABASE",
           operation: "GET_POST_BY_SLUG",
           slug,
-          error
-        })
+          error,
+        });
 
         throw error;
       }
@@ -106,8 +108,8 @@ export class DatabaseService {
         logger.warn("DB:getPostBySlug not_found", {
           step: "DATABASE",
           operation: "GET_POST_BY_SLUG",
-          slug
-        })
+          slug,
+        });
 
         const notFoundError = new Error(
           `Post com o slug ${slug} não foi encontrado`
@@ -131,7 +133,7 @@ export class DatabaseService {
     try {
       const { data: post, error } = await db
         .from("Post")
-        .select("id, slug, title")
+        .select("id, slug, title, authorId, reportCount")
         .eq("id", postId)
         .single();
 
@@ -148,6 +150,32 @@ export class DatabaseService {
       }
 
       return post;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deletePost(postId) {
+    try {
+      const { error } = await db.from("Post").delete().eq("id", postId);
+
+      if (error) {
+        logger.error("DB:deletePost error", {
+          step: "DATABASE",
+          operation: "DELETE_POST",
+          postId,
+          error,
+        });
+        throw error;
+      }
+
+      logger.info("DB:deletePost success", {
+        step: "DATABASE",
+        operation: "DELETE_POST",
+        postId,
+      });
+
+      return { success: true };
     } catch (error) {
       throw error;
     }
@@ -205,11 +233,33 @@ export class DatabaseService {
         .single();
 
       if (error) {
+        logger.error("DB:createComment error", {
+          step: "DATABASE",
+          operation: "CREATE_COMMENT",
+          text,
+          authorId,
+          postId,
+          parentId,
+          error,
+        });
+
         throw error;
       }
 
       return data;
     } catch (error) {
+      logger.error("DB:createComment unexpected error", {
+        step: "DATABASE",
+        operation: "LIST_POSTS",
+        step: "DATABASE",
+        operation: "CREATE_COMMENT",
+        text,
+        authorId,
+        postId,
+        parentId,
+        error,
+      });
+
       throw error;
     }
   }
@@ -249,17 +299,20 @@ export class DatabaseService {
         .maybeSingle(); // ✅ maybeSingle() não dá erro se não encontrar
 
       if (existingUser) {
-        return existingUser;
+        // ✅ SEMPRE retornar com avatar padrão (não confiar no banco)
+        return {
+          ...existingUser,
+          avatar: DEFAULT_AVATAR_URL,
+        };
       }
 
-      // Se não existe, criar
+      // Se não existe, criar com avatar padrão
       const { data: newUser, error: createError } = await db
         .from("User")
         .insert({
-          username,
-          name: username,
-          avatar:
-            "https://raw.githubusercontent.com/gss-patricia/code-connect-assets/main/authors/anabeatriz_dev.png",
+          username: username.trim(),
+          name: username.trim(),
+          avatar: DEFAULT_AVATAR_URL, // ✅ Sempre avatar padrão
         })
         .select()
         .single();
@@ -287,6 +340,59 @@ export class DatabaseService {
       }
 
       return user;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createUser(userData) {
+    try {
+      const { data, error } = await db
+        .from("User")
+        .insert([userData])
+        .select()
+        .single();
+
+      if (error) {
+        logger.error("DB:createUser error", {
+          step: "DATABASE",
+          operation: "CREATE_USER",
+          userData,
+          error,
+        });
+        throw error;
+      }
+
+      logger.info("DB:createUser success", {
+        step: "DATABASE",
+        operation: "CREATE_USER",
+        username: userData.username,
+      });
+
+      return data;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // ===== USER PROFILE =====
+
+  async updateUserBio(userId, bio) {
+    try {
+      // ⚠️ VULNERÁVEL: Aceita qualquer HTML sem sanitização
+      // Durante o curso, vamos adicionar sanitização aqui
+      const { data, error } = await db
+        .from("User")
+        .update({ bio })
+        .eq("id", userId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return data;
     } catch (error) {
       throw error;
     }

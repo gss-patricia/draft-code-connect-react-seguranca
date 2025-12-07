@@ -8,7 +8,13 @@ import { Button } from "../Button";
 import { Link } from "../Link";
 import { Spinner } from "../Spinner";
 import { ErrorMessage } from "../ErrorMessage";
+import { requestPasswordReset } from "../../actions/passwordReset";
 
+/**
+ * ⚠️ COMPONENTE COM VERSÃO INSEGURA DE RESET PASSWORD
+ *
+ * Durante o curso (Módulo 2 - Vídeo 2.4), vamos corrigir as vulnerabilidades!
+ */
 export const ForgotPassword = () => {
   const router = useRouter();
 
@@ -16,6 +22,8 @@ export const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [debugToken, setDebugToken] = useState("");
+  const [debugUrl, setDebugUrl] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28,18 +36,21 @@ export const ForgotPassword = () => {
     setIsLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
+    setDebugToken("");
+    setDebugUrl("");
 
     try {
-      console.log("Enviando email de recuperação para:", email);
+      const result = await requestPasswordReset(email);
 
-      // Simular envio de email
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      setSuccessMessage(
-        "Email de recuperação enviado! Verifique sua caixa de entrada."
-      );
+      if (result.success) {
+        setSuccessMessage(result.message);
+        console.log("DEBUG TOKEN");
+        console.log("Reset URL:", result.debugUrl);
+      } else {
+        setErrorMessage(result.error);
+      }
     } catch (error) {
-      console.error("Erro ao enviar email:", error);
+      console.error("Erro ao solicitar reset:", error);
       setErrorMessage("Erro ao enviar email de recuperação");
     } finally {
       setIsLoading(false);
@@ -51,6 +62,7 @@ export const ForgotPassword = () => {
       <div className={styles.forgotCard}>
         <div className={styles.forgotContent}>
           <h1 className={styles.heading}>Esqueci minha senha</h1>
+
           <p className={styles.subtitle}>
             Digite seu email e enviaremos um link para redefinir sua senha
           </p>
