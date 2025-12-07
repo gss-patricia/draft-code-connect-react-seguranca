@@ -7,9 +7,9 @@ const nextConfig = {
         protocol: "https",
         hostname: "raw.githubusercontent.com",
         port: "",
-        pathname: "/**", // Permite qualquer path do GitHub
+        pathname: "/**",
       },
-      // GitHub Assets (caso use github.com/user/repo/blob/)
+      // GitHub Assets
       {
         protocol: "https",
         hostname: "github.com",
@@ -17,6 +17,52 @@ const nextConfig = {
         pathname: "/**",
       },
     ],
+  },
+
+  // 🔒 SECURITY HEADERS
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // Anti-Clickjacking
+          {
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
+          // Anti-MIME Sniffing
+          {
+            key: "X-Content-Type-Options",
+            value: "nosniff",
+          },
+          // Controle de Referer
+          {
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
+          },
+          // Bloqueia APIs sensíveis
+          {
+            key: "Permissions-Policy",
+            value:
+              "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+          },
+          // XSS Protection (legado)
+          {
+            key: "X-XSS-Protection",
+            value: "1; mode=block",
+          },
+          // HSTS (produção only)
+          ...(process.env.NODE_ENV === "production"
+            ? [
+                {
+                  key: "Strict-Transport-Security",
+                  value: "max-age=31536000; includeSubDomains; preload",
+                },
+              ]
+            : []),
+        ],
+      },
+    ];
   },
 };
 
