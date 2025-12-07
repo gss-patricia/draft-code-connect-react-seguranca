@@ -32,8 +32,30 @@ export async function deletePost(postId) {
       });
       return { success: false, error: "Usuário não encontrado" };
     }
-    // RBAC: apenas admin pode deletar
-    if (dbUser?.role !== "admin") {
+
+    // 🔍 Buscar o post para verificar ownership
+    const post = await database.getPostById(postId);
+
+    if (!post) {
+      logEventError({
+        step: "AUTHORIZATION",
+        operation: "POST_NOT_FOUND",
+        userId: authUser.id,
+        error: "Post not found",
+        metadata: { postId },
+      });
+      return { success: false, error: "Post não encontrado" };
+    }
+
+    // 🔒 HIERARQUIA DE PERMISSÕES:
+    // 1. Admin (RBAC) → pode deletar qualquer post
+    // 2. Owner (ABAC) → pode deletar próprio post
+    // 3. Outros → negado
+
+    const isAdmin = dbUser.role === "admin";
+    const isOwner = post.authorId === dbUser.id;
+
+    if (!isAdmin && !isOwner) {
       // 🔒 LOG DE SEGURANÇA: Tentativa de acesso negada
       logEventError({
         step: "AUTHORIZATION",
@@ -42,15 +64,18 @@ export async function deletePost(postId) {
         error: "Insufficient permissions",
         metadata: {
           postId,
+          postAuthorId: post.authorId,
           username: dbUser.username,
+          userId: dbUser.id,
           userRole: dbUser.role,
-          requiredRole: "admin",
+          isAdmin: false,
+          isOwner: false,
           userEmail: authUser.email,
         },
       });
       return {
         success: false,
-        error: "Apenas administradores podem deletar posts",
+        error: "Você não tem permissão para deletar este post",
       };
     }
 
