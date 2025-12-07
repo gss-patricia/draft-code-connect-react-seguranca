@@ -25,6 +25,12 @@ const nextConfig = {
       {
         source: "/:path*",
         headers: [
+          // CSP (Content Security Policy)
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+          },
           // Anti-Clickjacking
           {
             key: "X-Frame-Options",

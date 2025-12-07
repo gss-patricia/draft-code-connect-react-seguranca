@@ -31,7 +31,79 @@ module.exports = {
         // Aqui vem a lista de headers que queremos adicionar
         headers: [
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          // 🔥 HEADER 1: X-Frame-Options (Anti-Clickjacking)
+          // 🔥 HEADER 1: Content-Security-Policy (CSP)
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          //
+          // Esse é o header MAIS IMPORTANTE para prevenir XSS!
+          // Ele diz ao navegador de onde ele pode carregar scripts, estilos, imagens, etc.
+          //
+          // 🎯 O QUE É CSP?
+          // Content Security Policy é uma "lista de permissões" para o navegador.
+          // Você diz: "Só pode executar scripts que vêm de 'self' (mesmo domínio)".
+          // Se alguém injetar <script src="http://hacker.com/roubar.js"></script>,
+          // o navegador BLOQUEIA! 🛡️
+          //
+          // 📋 DIRETIVAS QUE USAMOS:
+          //
+          // 1. default-src 'self'
+          //    → Por padrão, só carrega recursos do mesmo domínio
+          //
+          // 2. script-src 'self' 'unsafe-eval' 'unsafe-inline'
+          //    → Scripts: permite do mesmo domínio + eval() + inline
+          //    ⚠️ 'unsafe-inline' e 'unsafe-eval' são menos seguros,
+          //    mas necessários para Next.js e bibliotecas modernas
+          //    💡 Alternativa mais segura: usar NONCE (mais complexo)
+          //
+          // 3. style-src 'self' 'unsafe-inline'
+          //    → Estilos: permite do mesmo domínio + inline (CSS-in-JS)
+          //
+          // 4. img-src 'self' data: https:
+          //    → Imagens: permite do mesmo domínio + data URIs + qualquer HTTPS
+          //
+          // 5. font-src 'self'
+          //    → Fontes: só do mesmo domínio
+          //
+          // 6. connect-src 'self' https://*.supabase.co
+          //    → APIs: permite mesmo domínio + Supabase (para fetch/XHR)
+          //
+          // 7. frame-ancestors 'none'
+          //    → NÃO permite iframe (igual X-Frame-Options: DENY)
+          //
+          // 8. base-uri 'self'
+          //    → Tag <base> só pode apontar para mesmo domínio
+          //
+          // 9. form-action 'self'
+          //    → Forms só podem submeter para mesmo domínio
+          //
+          // 10. object-src 'none'
+          //     → Bloqueia <object>, <embed>, <applet> (obsoletos e perigosos)
+          //
+          // 🎓 POR QUE 'unsafe-inline' e 'unsafe-eval'?
+          // - Next.js usa scripts inline para hydration
+          // - Bibliotecas de CSS-in-JS precisam de estilos inline
+          // - Algumas libs usam eval() para performance
+          //
+          // Idealmente, usaríamos NONCE (um token único por request):
+          // script-src 'nonce-abc123'
+          // Mas isso exige middleware e torna TODA a app dinâmica.
+          //
+          // Para este curso, CSP com unsafe-inline JÁ É MUITO BOM! ✅
+          // Ainda bloqueia a maioria dos ataques XSS.
+          //
+          // 📊 IMPACTO:
+          // Com CSP configurado, tentativas de XSS como:
+          // <script>alert('xss')</script>
+          // <img src=x onerror="alert('xss')">
+          // Serão BLOQUEADAS pelo navegador! 🎉
+          //
+          {
+            key: "Content-Security-Policy",
+            value:
+              "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' https://*.supabase.co; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+          },
+
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          // 🔥 HEADER 2: X-Frame-Options (Anti-Clickjacking)
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           //
           // Esse header previne CLICKJACKING.
@@ -55,7 +127,7 @@ module.exports = {
           },
 
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          // 🔥 HEADER 2: X-Content-Type-Options (Anti-MIME Sniffing)
+          // 🔥 HEADER 3: X-Content-Type-Options (Anti-MIME Sniffing)
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           //
           // Esse header previne MIME SNIFFING.
@@ -77,7 +149,7 @@ module.exports = {
           },
 
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          // 🔥 HEADER 3: Referrer-Policy (Controle de Vazamento de URL)
+          // 🔥 HEADER 4: Referrer-Policy (Controle de Vazamento de URL)
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           //
           // Esse header controla QUANTO de informação é enviada no Referer.
@@ -102,7 +174,7 @@ module.exports = {
           },
 
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          // 🔥 HEADER 4: Permissions-Policy (Bloqueia APIs Sensíveis)
+          // 🔥 HEADER 5: Permissions-Policy (Bloqueia APIs Sensíveis)
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           //
           // Esse header desabilita APIs sensíveis do navegador.
@@ -128,7 +200,7 @@ module.exports = {
           },
 
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          // 🔥 HEADER 5: X-XSS-Protection (Legado, mas ainda útil)
+          // 🔥 HEADER 6: X-XSS-Protection (Legado, mas ainda útil)
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           //
           // Esse header é LEGADO. Browsers modernos ignoram porque têm CSP.

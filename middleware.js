@@ -1,32 +1,17 @@
 import { updateSession } from "./src/utils/supabase/middleware";
-import { generateNonce, getCSPHeader } from "./src/lib/csp";
 
 /**
- * 🔒 MIDDLEWARE - Adiciona CSP com nonce dinâmico
+ * 🔒 MIDDLEWARE - Atualiza sessão do Supabase
  *
- * Este middleware:
- * 1. Atualiza sessão do Supabase (auth)
- * 2. Gera nonce único para este request
- * 3. Adiciona header Content-Security-Policy com o nonce
- * 4. Passa o nonce via header x-nonce (para usar no layout)
+ * Este middleware apenas atualiza a sessão do Supabase (auth).
+ * 
+ * ⚠️ NOTA: Security headers (CSP, HSTS, etc) estão configurados no next.config.js
+ * Não é necessário adicionar aqui porque são headers ESTÁTICOS.
  */
 export async function middleware(request) {
-  // 1. Atualizar sessão Supabase (importante!)
-  let response = await updateSession(request);
-
-  // 2. Gerar nonce único para ESTE request
-  const nonce = generateNonce();
-
-  // 3. Adicionar CSP com nonce
-  const cspHeader = getCSPHeader(nonce);
-  response.headers.set("Content-Security-Policy", cspHeader);
-
-  // 4. Passar nonce para o frontend via header customizado
-  response.headers.set("x-nonce", nonce);
-
-  // Debug: log para verificar se middleware está executando
-  console.log("🔒 CSP Middleware executado para:", request.nextUrl.pathname);
-
+  // Atualizar sessão Supabase
+  const response = await updateSession(request);
+  
   return response;
 }
 
