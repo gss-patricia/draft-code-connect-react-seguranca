@@ -225,7 +225,7 @@ module.exports = {
           },
 
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          // 🔥 HEADER 6: Strict-Transport-Security (HSTS - Force HTTPS)
+          // 🔥 HEADER 7: Strict-Transport-Security (HSTS - Force HTTPS)
           // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           //
           // ⚠️ ATENÇÃO! Esse header é PERIGOSO se usado errado!
@@ -281,16 +281,19 @@ module.exports = {
  * ✅ Melhor performance (não executa código em cada request)
  * ✅ Mais simples (declarativo, sem lógica)
  * ✅ Funciona para assets estáticos também
+ * ✅ Permite SSG/ISR (páginas estáticas com cache de CDN)
  *
  * Quando NÃO usar next.config.js:
  * ❌ Se o header precisa ser DINÂMICO (ex: valor muda por request)
  * ❌ Se precisa de lógica condicional complexa
  * ❌ Se precisa ler dados do request (cookies, headers, etc)
  *
- * Exemplo: CSP com nonce
- * - Nonce precisa ser DIFERENTE em cada request
- * - Precisa gerar crypto.randomUUID() dinamicamente
- * - Logo, CSP vai no MIDDLEWARE, não aqui!
+ * Exemplo de quando usar MIDDLEWARE:
+ * - CSP com nonce (valor dinâmico por request)
+ * - CORS com validação de origin (lógica condicional)
+ * - Rate limiting baseado em IP (dados do request)
+ *
+ * Para security headers ESTÁTICOS (como os nossos), next.config.js é PERFEITO! 🎯
  */
 
 /**
@@ -311,19 +314,29 @@ module.exports = {
  *    - Deploy em produção (Vercel, etc)
  *    - Abrir https://securityheaders.com
  *    - Digitar a URL do seu site
- *    - Score esperado: B (porque ainda falta o CSP)
+ *    - Score esperado: A (excelente!) 🎉
  *
- * 4. No próximo vídeo:
- *    Vamos adicionar CSP com nonce no middleware
- *    Score esperado: A+ 🎉
+ * 4. Por que Score A e não A+?
+ *    Porque usamos 'unsafe-inline' no CSP.
+ *    Para ter A+, seria necessário usar nonces, mas isso:
+ *    - Força SSR sempre (3-5x mais lento)
+ *    - Aumenta custo 3-5x
+ *    - Quebra cache de CDN
+ *    Trade-off não vale a pena quando já temos 5 camadas de defesa!
  */
 
 /**
  * ⚠️ HEADERS QUE NÃO INCLUÍMOS (e por quê)
  *
- * 1. Content-Security-Policy (CSP)
- *    Por quê não está aqui? Porque precisa de NONCE DINÂMICO.
- *    Vamos implementar no MIDDLEWARE (próximo vídeo).
+ * 1. CSP com NONCE (Score A+)
+ *    Por quê não está aqui? Trade-off de performance!
+ *    Nonce exige:
+ *    - SSR sempre (3-5x mais lento)
+ *    - Sem cache de CDN
+ *    - Custo 3-5x maior
+ *    Com 5 camadas de defesa já implementadas (client validation,
+ *    server actions, sanitizeHTML, database, ReactMarkdown),
+ *    o Score A com 'unsafe-inline' é SUFICIENTE! ✅
  *
  * 2. CORS (Access-Control-Allow-Origin)
  *    Por quê não está aqui? Porque NESTE PROJETO não precisamos!
