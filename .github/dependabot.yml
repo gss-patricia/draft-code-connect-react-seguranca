@@ -7,16 +7,15 @@ updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      # Verificar toda semana (segunda-feira)
-      interval: "weekly"
-      day: "monday"
+      # Verificar todo dia
+      interval: "daily"
       time: "09:00"
       timezone: "America/Sao_Paulo"
-    
+
     # Limitar número de PRs abertas simultaneamente
     # (para não sobrecarregar)
     open-pull-requests-limit: 5
-    
+
     # Agrupar PRs para reduzir spam
     groups:
       # Agrupar dependências de desenvolvimento
@@ -25,33 +24,32 @@ updates:
         update-types:
           - "minor"
           - "patch"
-      
+
       # Agrupar dependências de produção (minor/patch)
       production-dependencies:
         dependency-type: "production"
         update-types:
           - "minor"
           - "patch"
-    
+
     # Permitir Dependabot acessar registry privado (se necessário)
     # registries: "*"
-    
+
     # Labels para adicionar nas PRs
     labels:
       - "dependencies"
       - "security"
-    
+
     # Reviewers (opcional - adicionar seu username)
     # reviewers:
     #   - "seu-username"
-    
+
     # Assignees (opcional)
     # assignees:
     #   - "seu-username"
-    
+
     # Prefixo dos commits
     commit-message:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
-
