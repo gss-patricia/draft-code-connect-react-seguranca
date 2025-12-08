@@ -25,6 +25,11 @@ const nextConfig = {
       {
         source: "/:path*",
         headers: [
+          // CORS (desabilita acesso externo)
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "null",
+          },
           // CSP (Content Security Policy)
           {
             key: "Content-Security-Policy",
